@@ -564,6 +564,16 @@ module ocn_time_integration_split
          ! BEGIN baroclinic iterations on linear Coriolis term
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+         !do iEdge = 1, nEdgesAll
+         !do k = minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
+         !   if(k==5 .and. indexToEdgeID(iEdge)==1000) then
+         !      do j = 1, nEdgesOnEdge(iEdge)
+         !         print*, indexToEdgeID(iEdge), k, j, normalVelocityNew(k,edgesOnEdge(j,iEdge))
+         !      end do
+         !   end if
+         !end do
+         !end do
+
          do j=1,numClinicIterations(splitExplicitStep)
 
             call mpas_timer_start('bcl iters on linear Coriolis')
@@ -571,6 +581,16 @@ module ocn_time_integration_split
             ! Put f*normalBaroclinicVelocity^{perp} in
             ! normalVelocityNew as a work variable
             call ocn_fuperp(statePool, meshPool, 2)
+
+            !do iEdge = 1, nEdgesAll
+            !do k = minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
+            !   if(k==5 .and. indexToEdgeID(iEdge)==1000) then
+            !      do i = 1, nEdgesOnEdge(iEdge)
+            !         print*, indexToEdgeID(iEdge), k, i, normalVelocityNew(k,edgesOnEdge(i,iEdge))
+            !      end do
+            !   end if
+            !end do
+            !end do
 
             !TODO: look at loop optimizations here
             ! Only need to loop over owned cells, since there is a halo
@@ -644,7 +664,17 @@ module ocn_time_integration_split
                               'normalBaroclinicVelocity', timeLevel=2)
             call mpas_timer_stop("se halo normalBaroclinicVelocity")
 
-            call mpas_timer_stop('bcl iters on linear Coriolis')
+            call mpas_timer_stop('bcl iters on linear Coriolis') 
+
+            !do iEdge = 1, nEdgesAll
+            !do k = minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
+            !   if(k==5 .and. indexToEdgeID(iEdge)==1000) then
+            !      do i = 1, nEdgesOnEdge(iEdge)
+            !         print*, indexToEdgeID(iEdge), k, i, normalVelocityNew(k,edgesOnEdge(i,iEdge))
+            !      end do
+            !   end if
+            !end do
+            !end do
 
          end do  ! do j=1,config_n_bcl_iter
 
@@ -652,7 +682,7 @@ module ocn_time_integration_split
          call mpas_dmpar_field_halo_exch(domain, 'barotropicForcing')
          call mpas_timer_stop('se halo barotropicForcing')
 
-         call mpas_timer_stop("se bcl vel")
+         call mpas_timer_stop("se bcl vel")       
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          ! END baroclinic iterations on linear Coriolis term
@@ -1645,6 +1675,8 @@ module ocn_time_integration_split
             call ocn_diagnostic_solve(dt, statePool, forcingPool, &
                                       meshPool, scratchPool, &
                                       tracersPool, 2, full=.false.)
+ 
+            !print*, '1' 
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          ! If large iteration complete, compute all variables at
@@ -1652,6 +1684,16 @@ module ocn_time_integration_split
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
          elseif (splitExplicitStep == numTSIterations) then
+
+            !do iEdge = 1, nEdgesAll
+            !do k = minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
+            !   if(k==5 .and. indexToEdgeID(iEdge)==1000) then
+            !      do j = 1, nEdgesOnEdge(iEdge)
+            !         print*, indexToEdgeID(iEdge), k, j, normalVelocityNew(k,edgesOnEdge(j,iEdge))
+            !      end do
+            !   end if
+            !end do
+            !end do
 
             !$omp parallel
             !$omp do schedule(runtime) private(k)
@@ -1855,6 +1897,7 @@ module ocn_time_integration_split
 
             !$omp parallel
             !$omp do schedule(runtime) private(k)
+
             do iEdge = 1, nEdgesAll
             do k = minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
                normalVelocityNew(k,iEdge) = &
@@ -1864,7 +1907,7 @@ module ocn_time_integration_split
             end do
             end do ! iEdges
             !$omp end do
-            !$omp end parallel
+            !$omp end parallel 
 
          endif ! splitExplicitStep
 
@@ -1879,6 +1922,8 @@ module ocn_time_integration_split
 
       call mpas_timer_start("se implicit vert mix")
 
+      !call mpas_dmpar_field_halo_exch(domain, 'normalVelocity', timeLevel=2)
+
       ! Call ocean diagnostic solve in preparation for vertical mixing.
       ! Note it is called again after vertical mixing, because u and
       ! tracers change. For Richardson vertical mixing, only density,
@@ -1889,7 +1934,8 @@ module ocn_time_integration_split
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)
 
-      call mpas_dmpar_field_halo_exch(domain, 'surfaceFrictionVelocity')
+      !print*, '2'
+      call mpas_dmpar_field_halo_exch(domain, 'surfaceFrictionVelocity') 
 
       ! Compute normalGMBolusVelocity; it will be added to the
       ! baroclinic modes in Stage 2 above.
@@ -1953,6 +1999,8 @@ module ocn_time_integration_split
 
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)
+
+      !print*, '3' 
 
       ! Update the effective desnity in land ice if we're coupling to
       ! land ice

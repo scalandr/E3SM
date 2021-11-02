@@ -140,19 +140,21 @@ contains
          end do
       end if
 
-      if (config_triskCV) then      
-         ! Compute the areas of the diamond-shaped control volumes needed in
-         ! TRiSK-CV
-         call controlVolumeEdge(domain, meshPool)
-         ! Compute a matrix needed in TRiSK-CV for the computation of the
-         ! kinetic energy
-         call buildInvMatrixBtB(domain, meshPool)
-         ! Compute the weightsOnEdge needed in TRiSK-CV for the computation of
-         ! the kinetic energy in TRiSK-CV
-         call Wlsqr(domain, meshPool)   
-      end if
+      !if (config_triskCV) then      
+      !   ! Compute the areas of the diamond-shaped control volumes needed in
+      !   ! TRiSK-CV
+      !   call controlVolumeEdge(domain, meshPool)
+      !   ! Compute a matrix needed in TRiSK-CV for the computation of the
+      !   ! kinetic energy
+      !   call buildInvMatrixBtB(domain, meshPool)
+      !   ! Compute the weightsOnEdge needed in TRiSK-CV for the computation of
+      !   ! the kinetic energy in TRiSK-CV
+      !   call Wlsqr(domain, meshPool)   
+      !end if
 
       call ocn_diagnostic_solve(dt,  statePool, forcingPool, meshPool, scratchPool, tracersPool)
+      !print*, '0'
+      !call mpas_dmpar_field_halo_exch(domain, 'kineticEnergyCell')
 
       layerThickness(:, nCells+1) = 0.0_RKIND
 

@@ -30,7 +30,7 @@ module ocn_mesh
    use mpas_derived_types
    use mpas_pool_routines
    use mpas_constants
-   use mpas_log
+   use mpas_log 
 
    use ocn_config
 
@@ -144,6 +144,7 @@ module ocn_mesh
 
    real(kind=RKIND), public, dimension(:, :), pointer :: &
       weightsOnEdge, &! weights on each edge
+      weightsOnEdge_lsqr, &
       kiteAreasOnVertex, &! real (vertexDegree nVertices)
       edgeTangentVectors, &! tangent unit vector at edge
       edgeNormalVectors, &! normal  unit vector at edge
@@ -436,6 +437,8 @@ contains
                                areaTriangle)
       call mpas_pool_get_array(meshPool, 'weightsOnEdge', &
                                weightsOnEdge)
+      call mpas_pool_get_array(meshPool, 'weightsOnEdge_lsqr', &
+                               weightsOnEdge_lsqr)
       call mpas_pool_get_array(meshPool, 'bottomDepth', &
                                bottomDepth)
       call mpas_pool_get_array(meshPool, 'refBottomDepth', &
@@ -455,6 +458,8 @@ contains
 
       call mpas_pool_get_array(meshPool, 'weightsOnEdge', &
                                weightsOnEdge)
+      call mpas_pool_get_array(meshPool, 'weightsOnEdge_lsqr', &
+                               weightsOnEdge_lsqr)
       call mpas_pool_get_array(meshPool, 'kiteAreasOnVertex', &
                                kiteAreasOnVertex)
       call mpas_pool_get_array(meshPool, 'edgeTangentVectors', &
@@ -649,6 +654,7 @@ contains
          !$acc                   edgeSignOnCell,           &
          !$acc                   edgeSignOnVertex,         &
          !$acc                   weightsOnEdge,            &
+         !$acc                   weightsOnEdge_lsqr,       &
          !$acc                   kiteAreasOnVertex,        &
          !$acc                   edgeTangentVectors,       &
          !$acc                   edgeNormalVectors,        &
@@ -778,6 +784,7 @@ contains
       !$acc                  edgeSignOnCell,    &
       !$acc                  edgeSignOnVertex,  &
       !$acc                  weightsOnEdge,     &
+      !$acc                  weightsOnEdge_lsqr,  &
       !$acc                  kiteAreasOnVertex, &
       !$acc                  edgeTangentVectors,&
       !$acc                  edgeNormalVectors, &
@@ -859,6 +866,7 @@ contains
                meshDensity, &
                angleEdge, &
                weightsOnEdge, &
+               weightsOnEdge_lsqr, &
                kiteAreasOnVertex, &
                edgeTangentVectors, &
                edgeNormalVectors, &
@@ -1031,6 +1039,8 @@ contains
       !                                    areaTriangle)
       !call mpas_pool_get_array(meshPool, 'weightsOnEdge',     &
       !                                    weightsOnEdge)
+      !call mpas_pool_get_array(meshPool, 'weightsOnEdge_lsqr',     &
+      !                                    weightsOnEdge_lsqr)
       !call mpas_pool_get_array(meshPool, 'bottomDepth',       &
       !                                    bottomDepth)
       !call mpas_pool_get_array(meshPool, 'refBottomDepth',    &
@@ -1050,6 +1060,8 @@ contains
       !
       !call mpas_pool_get_array(meshPool, 'weightsOnEdge',             &
       !                                    weightsOnEdge)
+      !call mpas_pool_get_array(meshPool, 'weightsOnEdge_lsqr',             &
+      !                                    weightsOnEdge_lsqr)
       !call mpas_pool_get_array(meshPool, 'kiteAreasOnVertex',         &
       !                                    kiteAreasOnVertex)
       !call mpas_pool_get_array(meshPool, 'edgeTangentVectors',        &
@@ -1205,6 +1217,7 @@ contains
       !$acc               edgeSignOnCell,           &
       !$acc               edgeSignOnVertex,         &
       !$acc               weightsOnEdge,            &
+      !$acc               weightsOnEdge_lsqr,       &
       !$acc               kiteAreasOnVertex,        &
       !$acc               edgeTangentVectors,       &
       !$acc               edgeNormalVectors,        &
