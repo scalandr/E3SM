@@ -136,7 +136,7 @@ module ocn_time_integration_split
          block ! structure with subdomain data
 
       type (mpas_pool_type), pointer :: &
-         statePool,         &! structure holding state variables
+         statePool,         &! structure holding state variables 
          tracersPool,       &! structure holding tracers
          meshPool,          &! structure holding mesh variables
          verticalMeshPool,  &! structure holding vertical mesh variables
@@ -303,7 +303,7 @@ module ocn_time_integration_split
       call mpas_pool_get_subpool(block%structs, 'state', &
                                                  statePool)
       call mpas_pool_get_subpool(block%structs, 'forcing', &
-                                                 forcingPool)
+                                                 forcingPool) 
       call mpas_pool_get_subpool(block%structs, 'shortwave', &
                                                  swForcingPool)
       call mpas_pool_get_subpool(block%structs, 'tend', &

@@ -511,6 +511,8 @@ contains
    subroutine ocn_vertVel_vmix_tend_implicit(meshPool, dt, vertViscTopOfCell, layerThickness, & !{{{
                                          verticalVelocity, err)
 
+      implicit none
+
       !-----------------------------------------------------------------
       !
       ! input variables
@@ -580,7 +582,7 @@ contains
       C(1) = 0.0_RKIND
 
       !$omp parallel
-      !$omp do schedule(runtime) private(viscAv, N, cell1, cell2, A, B, C, velTemp, k)
+      !$omp do schedule(runtime) private(viscAv, N, A, B, C, velTemp, k) 
       do iCell = 1, nCells
         N = maxLevelCell(iCell)+1
         if (N .gt. 0) then

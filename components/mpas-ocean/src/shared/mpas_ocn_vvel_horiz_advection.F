@@ -7,19 +7,18 @@
 !
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 !
-!  ocn_vvel_advection_std
+!  ocn_vvel_horiz_advection
 !
-!> \brief MPAS standard vertical velocity horizontal advection
-!> \author Luke Van Roekel
-!> \date   January 2021
+!> \brief MPAS horizontal advection for (non-hydrostatic) vertical velocity
+!> \author Luke Van Roekel, Darren Engwirda, Sara Calandrini
+!> \date   January 2021, updated Novermber 2021
 !> \details
 !>  This module contains routines for horizontal advection of vertical velocity
-!>  using a standard FV algorithm in MPAS discretization.  Based on the standard
-!>  tracer advection scheme
+!>  via a simple TRiSK-type scheme at vertical levels (ie. half-layers).
 !
 !-------------------------------------------------------------------------------
 
-module ocn_vvel_horiz_advection_vector_invariant
+module ocn_vvel_horiz_advection
 
    ! module includes
    use mpas_kind_types
@@ -29,167 +28,166 @@ module ocn_vvel_horiz_advection_vector_invariant
    use mpas_threading
    use ocn_config
    use ocn_mesh
-   use mpas_tracer_advection_helpers
    use ocn_tracer_advection_shared
    use ocn_diagnostics_variables
 
    implicit none
    private
-   save
-
-   ! private module variables
-   real (kind=RKIND) :: &
-      coef3rdOrder       !< coefficient for blending high-order terms
-
-   real (kind=RKIND) :: advCoeffOrderVal
+   save 
 
    ! public method interfaces
-   public :: ocn_vvel_horiz_vector_invariant_advection_tend, &
-             ocn_vvel_horiz_vector_invariant_advection_init
+   public :: ocn_vvel_horiz_advection_tend, &
+             ocn_vvel_horiz_advection_init
 
    contains
 
-!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 !
-!  routine ocn_vvel_horiz_advection_std_tend
+!  routine ocn_vvel_horiz_advection_tend
 !
-!> \brief MPAS standard vertical velocity advection tendency
-!> \author Luke Van Roekel
-!> \date   12/21/20
+!> \brief MPAS horizontal advection tendency for (non-hydrostatic) vertical velocity
+!> \author Luke Van Roekel, Darren Engwirda, Sara Calandrini
+!> \date   12/21/20, updated 11/19/2021
 !> \details
-!>  This routine computes the standard vertical velocity advection tendencity.
-!>  NOTE this is only active for non hydrostatic mode
+!>  NOTE this is only active for non-hydrostatic mode
 !
 !-----------------------------------------------------------------------
-   subroutine ocn_vvel_horiz_vector_invariant_advection_tend(verticalVelocity, &!{{{
-                                            normalTransportVelocity, layerThicknessEdge, dt, &
-                                             tend)
 
-      real (kind=RKIND), dimension(:,:), intent(in) :: normalTransportVelocity !< Input: Thichness weighted velocitiy
-      real (kind=RKIND), dimension(:,:), intent(in) :: layerThicknessEdge !< Input: Thickness
-      real (kind=RKIND), dimension(:,:), intent(in) :: verticalVelocity
-      real (kind=RKIND), intent(in) :: dt !< Input: Timestep
-      real (kind=RKIND), dimension(:,:), intent(inout) :: tend !< Input/Output: Vertical Velocity tendency
+   subroutine ocn_vvel_horiz_advection_tend(verticalVelocity, &
+      normalThicknessFlux, layerThickness, dt, meshPool, tend)!{{{ 
 
-      integer :: i, iCell, iEdge, k, cell1, cell2
+      implicit none
+
+      !*** input parameters
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         verticalVelocity                   !< [in] non-hydrostatic vertical velocity
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         normalThicknessFlux                !< [in] normal thickness flux uh at edges
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         layerThickness                     !< [in] layer thickness at cells
+      real (kind=RKIND), intent(in) :: dt   !< [in] time-step
+      type (mpas_pool_type), intent(in) :: meshPool !< [in] mesh information
+
+      !*** output parameters
+      real (kind=RKIND), dimension(:,:), intent(inout) :: &
+         tend                                       !< [out] vvel tendencies
+
+      integer :: iCell, iEdge, jEdge, k, cell1, cell2
       integer :: nVertLevels, nCells, nEdges
+      integer, dimension(:), pointer :: nEdgesOnCell, nCellsArray, nEdgesArray
+      integer, dimension(:,:), pointer :: cellsOnEdge, edgesOnCell
+      integer, dimension(:), pointer :: maxLevelCell
+      integer, dimension(:), pointer :: maxLevelEdgeTop
+      integer, dimension(:, :), pointer :: edgeSignOnCell, edgeMask
 
-      real (kind=RKIND) :: vvel_weight, invAreaCell1
-
-      real (kind=RKIND), dimension(:), allocatable :: fluxTmp
-
-      real (kind=RKIND), dimension(:,:), allocatable :: high_order_horiz_flux, tendtmp
-
-      real (kind=RKIND), parameter :: eps = 1.e-10_RKIND
+      real (kind=RKIND) :: vertVelocityFlux
+      real (kind=RKIND), dimension(:), pointer :: dvEdge, areaCell
+      real (kind=RKIND), dimension(:), allocatable :: invVolCell
+      real (kind=RKIND), dimension(:,:), allocatable :: horizFlux
 
       ! Get dimensions
       nVertLevels = size(verticalVelocity,dim=1)
 
       ! Initialize pointers
-
       nCells = nCellsHalo( 1 )
       nEdges = nEdgesHalo( 2 )
-      allocate(high_order_horiz_flux(nVertLevels, nEdges))
-      allocate(tendtmp(nVertLevels,nCells))
-      allocate(fluxTmp(nVertLevels))
+      allocate(invVolCell(nVertLevels))
+      allocate(horizFlux(nVertLevels, nEdges)) 
 
+      !$omp parallel
+      !$omp do schedule(runtime)
       do iEdge = 1, nEdges
-         high_order_horiz_flux(:, iEdge) = 0.0_RKIND
+         horizFlux(:, iEdge) = 0.0_RKIND
       end do
+      !$omp end do
+      !$omp end parallel
 
-      !Switch to the vector invariant form, may be buggy.  Likely in the sign.
-      !$omp do schedule(runtime) private(cell1, cell2, k)
-      do iEdge = 1,nEdges
-         cell1 = cellsOnEdge(1, iEdge)
-         cell2 = cellsOnEdge(2, iEdge)
+      ! compute edge fluxes for div(u*h*w)
+      !$omp parallel
+      !$omp do schedule(runtime) &
+      !$omp private(k, cell1, cell2, vertVelocityFlux)
+      do iEdge = 1, nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k = 1, maxLevelEdgeTop(iEdge)
+            if (k .gt. 1) then
+               vertVelocityFlux = &
+                  0.5_RKIND * (normalThicknessFlux(k-1,iEdge) + &
+                               normalThicknessFlux(k-0,iEdge)) * &
+                  0.5_RKIND * (verticalVelocity(k,cell1) + verticalVelocity(k,cell2))
+            else
+               vertVelocityFlux = & ! surface
+                  1.0_RKIND * (normalThicknessFlux(k-0,iEdge)) * &
+                  0.5_RKIND * (verticalVelocity(k,cell1) + verticalVelocity(k,cell2))
+            end if
 
-         do k = 2, maxLevelEdgeTop(iEdge)
-            high_order_horiz_flux(k, iEdge) = 0.5_RKIND*(normalTransportVelocity(k-1,iEdge) + &
-                  normalTransportVelocity(k,iEdge))*((verticalVelocity(k,cell2) - &
-                  verticalVelocity(k,cell1))/dcEdge(iEdge) + (normalTransportVelocity(k-1, iEdge) - &
-                  normalTransportVelocity(k,iEdge)) / (0.5_RKIND*(layerThicknessEdge(k-1,iEdge) + &
-                  layerThicknessEdge(k,iEdge))))
+            horizFlux(k,iEdge) = &
+               edgeMask(k,iEdge) * dvEdge(iEdge) * vertVelocityFlux
          end do
       end do
       !$omp end do
+      !$omp end parallel
+     
+      ! eval. tendencies as div(u*h*w) / (A*h)
+      !$omp parallel
+      !$omp do schedule(runtime) &
+      !$omp private(k, iEdge, jEdge, invVolCell)
+      do iCell = 1, nCells
+         invVolCell(:) =-1.0e34_RKIND
+         invVolCell(1) = 1.0_RKIND / (areaCell(iCell) * layerThickness(1,iCell))
+         do k = 2, maxLevelCell(iCell)
+            invVolCell(k) = 2.0_RKIND / ( &
+               areaCell(iCell) * (layerThickness(k-1,iCell) + layerThickness(k-0,iCell)))
+         end do
 
-      !$omp do schedule(runtime) private(vvel_weight, iEdge, i, k)
-      do iCell = 1,nCells
-         invAreaCell1 = 1.0_RKIND / areaCell(iCell)
-         fluxTmp(:) = 0.0_RKIND
-         do k = 2, maxLevelEdgeTop(iEdge)
-            do i = 1,nEdgesOnCell(iCell)
-               iEdge = edgesOnCell(i, iCell)
-  
-               fluxTmp(k) = fluxTmp(k) + high_order_horiz_flux(k,iEdge)*edgeAreaFractionOfCell(i,iCell)* &
-                 edgeSignOnCell(i, iCell)
+         do jEdge = 1, nEdgesOnCell(iCell)
+            iEdge = edgesOnCell(jEdge,iCell)
+            do k = 1, maxLevelEdgeTop(iEdge)
+               tend(k,iCell) = tend(k,iCell) + &
+                  edgeSignOnCell(jEdge,iCell) * invVolCell(k) * horizFlux(k,iEdge)  
             end do
-            tend(k,iCell) = tend(k,iCell) + 2.0_RKIND*fluxTmp(k)
          end do
       end do
       !$omp end do
+      !$omp end parallel
 
-      deallocate(fluxTmp)
-      deallocate(high_order_horiz_flux)
-      deallocate(tendtmp)
+      deallocate(horizFlux)
+      deallocate(invVolCell) 
 
-   end subroutine ocn_vvel_horiz_vector_invariant_advection_tend!}}}
+   end subroutine ocn_vvel_horiz_advection_tend!}}}
 
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 !
 !  routine ocn_vvel_horiz_advection_init
 !
 !> \brief MPAS initialize vertical velocity advection tendency.
-!> \author Luke Van Roekel
-!> \date   12/21/2020
+!> \author Luke Van Roekel, Darren Engwirda, Sara Calandrini
+!> \date   12/21/2020, updated 11/19/2021
 !> \details
-!>  This routine initializes constants and choices for the vertical velocity
-!>  advection tendency
+!>  This routine initializes constants and choices for the (non-hydrostatic) 
+!>  vertical velocity advection tendency
 !
 !-------------------------------------------------------------------------------
 
-   subroutine ocn_vvel_horiz_vector_invariant_advection_init(horzAdvOrder, &
-                                            inCoef3rdOrder,             &
-                                            err) !{{{
+   subroutine ocn_vvel_horiz_advection_init(err) !{{{ 
 
-      !*** input parameters
+      implicit none
 
-      integer, intent(in) :: &
-         horzAdvOrder         !< [in] Order for horizontal advection
-      real (kind=RKIND), intent(in) :: &
-         inCoef3rdOrder       !< [in] Coefficient for blending advection orders
+      !*** input parameters 
 
       !*** output parameters
 
       integer, intent(out) :: err !< [out] Error Flag
 
-      ! end of preamble
-      !----------------
-      ! begin code
-
       err = 0 ! set error code to success
+     
+      ! don't have actual choices for vvel advection here, unlike tracers       
 
-      advCoeffOrderVal = 0.0_RKIND
-
-      ! set 3rd order coefficient based on horizontal order choice
-      select case (horzAdvOrder)
-      case (2)
-         coef3rdOrder = 0.0_RKIND
-         advCoeffOrderVal = 1.0_RKIND
-      case (3)
-         coef3rdOrder = inCoef3rdOrder
-      case (4)
-         coef3rdOrder = 0.0_RKIND
-      case default
-         call mpas_log_write( &
-            'Invalid value for horz advection order, defaulting to 2nd order', &
-            MPAS_LOG_WARN)
-      end select ! horzAdvOrder
-
-   end subroutine ocn_vvel_horiz_vector_invariant_advection_init!}}}
+   end subroutine ocn_vvel_horiz_advection_init!}}}
 
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
-end module ocn_vvel_horiz_advection_vector_invariant
+end module ocn_vvel_horiz_advection
 
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||

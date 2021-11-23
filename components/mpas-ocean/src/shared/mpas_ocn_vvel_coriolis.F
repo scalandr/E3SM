@@ -10,8 +10,8 @@
 !  ocn_vel_hadv_coriolis
 !
 !> \brief MPAS ocean tendency of coriolis for vertical momentum equation
-!> \author Luke Van Roekel
-!> \date   December 2020
+!> \author Luke Van Roekel, Darren Engwirda, Sara Calandrini
+!> \date   December 2021, updated November 2021
 !> \details
 !>  This module contains the routine for computing
 !>  tendencies from the vertical momentum coriolis force.
@@ -109,17 +109,14 @@ contains
       ! local variables
       !
       !-----------------------------------------------------------------
+ 
+      integer, dimension(:), pointer :: maxLevelCell      
 
-      integer, dimension(:), pointer :: maxLevelCell, nEdgesOnCell
-      integer, dimension(:,:), pointer :: cellsOnEdge, edgesOnCell, edgeMask
-
-      integer :: j, k, i, iCell
-      integer :: cell1, cell2, iEdge, nCells
+      integer :: k, iCell, nCells 
       integer, pointer :: nVertLevels
       integer, dimension(:), pointer :: nCellsArray
-      real (kind=RKIND) :: workVorticity, invLength, edgeWeight, r_tmp
-      real, dimension(:), pointer :: latCell
-      real (kind=RKIND), dimension(:), allocatable :: qArr
+      real (kind=RKIND) :: fCellExtended
+      real (kind=RKIND), dimension(:), pointer :: latCell 
 
       err = 0
 
@@ -136,16 +133,17 @@ contains
 
       nCells = nCellsArray( 2 )
 
+      !FIXME: zonalvelocity may be a bad choice here as it's not updated during a 
+      !timestep but maybe not the worst assumption.
+
       !$omp parallel
       !$omp do schedule(runtime) &
-      !$omp private(cell1, cell2, invLength, k, qArr, j, eoe, edgeWeight, workVorticity)
+      !$omp private(k, iCell, fCellExtended) 
       do iCell= 1, nCells
 
          do k = 2, maxLevelCell(iCell)
-            tend(k, iCell) = tend(k, iCell) + 2.0_RKIND*omega*cos(latCell(iCell))* &
-                    (0.5_RKIND*(velocityZonal(k,iCell) * velocityZonal(k-1,iCell)))
-                    !FIXME: zonalvelocity may be a bad choice here as it's not updated during a timestep
-                    ! but maybe not the worst assumption.
+            tend(k,iCell) = tend(k,iCell) + 0.5_RKIND * &
+               fCellExtended * (velocityZonal(k,iCell) + velocityZonal(k-1,iCell))
          end do
 
       end do

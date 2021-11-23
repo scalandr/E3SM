@@ -1009,7 +1009,7 @@ contains
 
       nCells = nCellsAll
       nVertices = nVerticesAll
-      nEdges = nCellsAll
+      nEdges = nEdgesAll
       apvm_scale_factor = config_apvm_scale_factor;
 
       ! Diagnostics required for the Anticipated Potential Vorticity Method (apvm).
@@ -1032,8 +1032,8 @@ contains
          do iEdge = 1,nEdges
             cell1 = cellsOnEdge(1, iEdge)
             cell2 = cellsOnEdge(2, iEdge)
-            vertex1 = verticesOnedge(1, iEdge)
-            vertex2 = verticesOnedge(2, iEdge)
+            vertex1 = verticesOnEdge(1, iEdge)
+            vertex2 = verticesOnEdge(2, iEdge)
 
             invLength = 1.0_RKIND / dcEdge(iEdge)
             ! Compute gradient of PV in normal direction

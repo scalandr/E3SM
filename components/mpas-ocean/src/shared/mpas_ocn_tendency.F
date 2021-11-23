@@ -249,7 +249,9 @@ contains
 !
 !-----------------------------------------------------------------------
 
-subroutine ocn_tend_vvel(tendPool, statePool, forcingPool, meshPool, timeLevelIn, dt)!{{{
+subroutine ocn_tend_vvel(tendPool, statePool, forcingPool, meshPool, & 
+                        timeLevelIn, dt)!{{{
+
    implicit none
 
    type (mpas_pool_type), intent(inout) :: tendPool !< Input/Output: Tendency structure
@@ -266,7 +268,7 @@ subroutine ocn_tend_vvel(tendPool, statePool, forcingPool, meshPool, timeLevelIn
      layerThickness, nonhydrostaticPressure, &
      tend_normalVelocity, circulation, relativeVorticity, viscosity, kineticEnergyCell, &
      normalizedRelativeVorticityEdge, normalizedPlanetaryVorticityEdge, &
-     montgomeryPotential, vertAleTransportTop, divergence, vertViscTopOfEdge, &
+     montgomeryPotential, divergence, vertViscTopOfEdge, &
      inSituThermalExpansionCoeff, inSituSalineContractionCoeff, verticalVelocity, &
      tend_verticalVelocity
 
@@ -305,7 +307,8 @@ subroutine ocn_tend_vvel(tendPool, statePool, forcingPool, meshPool, timeLevelIn
    ! transport velocity for the tracer.
    !
    !$omp parallel
-   !$omp do schedule(runtime) private(k)
+   !$omp do schedule(runtime) & 
+   !$omp private(k)
    do iEdge = 1, nEdges
       do k = 1, nVertLevels
          normalThicknessFlux(k, iEdge) = normalTransportVelocity(k, iEdge) * layerThickEdge(k, iEdge)
@@ -317,12 +320,13 @@ subroutine ocn_tend_vvel(tendPool, statePool, forcingPool, meshPool, timeLevelIn
    !
    ! velocity tendency: start accumulating tendency terms
    !
-   !$omp Parallel
+   !$omp parallel
    !$omp do schedule(runtime)
    do iCell = 1, nCells
       tend_verticalVelocity(:, iCell) = 0.0_RKIND
    end do
    !$omp end do
+   !$omp end parallel
 
    if(config_disable_vvel_all_tend) return
 
@@ -335,14 +339,15 @@ subroutine ocn_tend_vvel(tendPool, statePool, forcingPool, meshPool, timeLevelIn
    !
    ! velocity tendency: horizontal and vertical advection
    !
-   call ocn_vvel_advection_tend(verticalVelocity, normalTransportVelocity,       &
-                                        layerThickness, layerThickEdge, dt,          &
+   call ocn_vvel_advection_tend(meshPool, verticalVelocity, normalThicknessFlux,       &
+                                        layerThickness, vertAleTransportTop, dt,          &
                                         tend_verticalVelocity)
 
    !
    ! velocity tendency: pressure gradient
    !
-   call ocn_vvel_pgf_tend(meshPool, nonhydrostaticPressure, tend_verticalVelocity, err)
+   call ocn_vvel_pgf_tend(meshPool, layerThickness, nonhydrostaticPressure, &
+        tend_verticalVelocity, err)
 
    !
    ! velocity tendency: del2 dissipation, CALL STRAIGHT to hmix_del2 FOR NOW!!! \nu_2 \nabla^2 u
@@ -350,7 +355,7 @@ subroutine ocn_tend_vvel(tendPool, statePool, forcingPool, meshPool, timeLevelIn
    !   strictly only valid for config_mom_del2 == constant
    !
    call ocn_vvel_hmix_del2_tend(layerThickEdge, verticalVelocity, &
-                           tend_verticalVelocity, err)
+        tend_verticalVelocity, err)
 
 
    call mpas_timer_stop("ocn_tend_vvel")

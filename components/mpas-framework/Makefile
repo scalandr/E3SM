@@ -582,14 +582,14 @@ ifeq "$(USE_PETSC)" "true"
 ifndef PETSC
 $(error PETSC is not set.  Please set PETSC to the PETSC install directory when USE_PETSC=true)
 endif
-ifneq (, $(shell ls $(PETSC)/libpetsc.*))
-	LIBS += -L$(PETSC)
-	CPPINCLUDES += -I$(PETSC)
-	FCINCLUDES += -I$(PETSC)
-else ifneq (, $(shell ls $(PETSC)/lib/libpetsc.*))
+ifneq (, $(shell ls $(PETSC)/lib/libpetsc.*))
 	LIBS += -L$(PETSC)/lib
 	CPPINCLUDES += -I$(PETSC)/include
 	FCINCLUDES += -I$(PETSC)/include
+else ifneq (, $(shell ls $(PETSC)/libpetsc.*))
+	LIBS += -L$(PETSC)
+	CPPINCLUDES += -I$(PETSC)
+	FCINCLUDES += -I$(PETSC)
 else
 $(error libpetsc.* does NOT exist in $(PETSC) or $(PETSC)/lib)
 endif

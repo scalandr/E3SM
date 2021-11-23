@@ -7,15 +7,14 @@
 !
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 !
-!  ocn_vvel_vert_advection_std
+!  ocn_vvel_vert_advection
 !
-!> \brief MPAS standard vertical velocity advection
-!> \author Luke Van Roekel
+!> \brief MPAS vertical advection for (non-hydrostatic)
+!> \author Luke Van Roekel, Darren Engwirda, Sara Calandrini
 !> \date   January 2021
 !> \details
-!>  This module contains routines for advection of vertical velocity using a standard
-!>  FV algorithm in MPAS discretization.  This routine has been adapted from the
-!>  tracer advection code without FCT
+!>  This module contains routines for advection of (non-hydrostatic) vertical 
+!>  velocity.
 !
 !-------------------------------------------------------------------------------
 
@@ -28,20 +27,11 @@ module ocn_vvel_vert_advection
    use mpas_io_units
    use mpas_threading
    use ocn_mesh
-   use mpas_tracer_advection_helpers
    use ocn_tracer_advection_shared
 
    implicit none
    private
    save
-
-   ! private module variables
-
-   integer :: vertOrder  !< choice of order for vertical advection
-   integer, parameter :: &! enumerator for supported vertical adv order
-      vertOrder2=2,      &!< 2nd order
-      vertOrder3=3,      &!< 3rd order
-      vertOrder4=4        !< 4th order
 
    ! public method interfaces
    public :: ocn_vvel_vert_advection_tend, &
@@ -49,125 +39,94 @@ module ocn_vvel_vert_advection
 
    contains
 
-!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+!||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 !
 !  routine ocn_vvel_vert_advection_tend
 !
-!> \brief MPAS standard vertical velocity vertical advection tendency
-!> \author Luke Van Roekel
-!> \date   12/22/2020
+!> \brief MPAS vertical advection tendency for (non-hydrostatic) vertical velocity
+!> \author Luke Van Roekel, Darren Engwirda, Sara Calandrini
+!> \date   12/22/2020, updated 11/20/2021
 !> \details
-!>  This routine computes the standard vertical velocity vertical advection tendency.
-!>
+!>  NOTE this is only active for non-hydrostatic mode
 !
 !-----------------------------------------------------------------------
-   subroutine ocn_vvel_vert_advection_tend(verticalVelocity, &!{{{
-                                             layerThickness, dt, &
-                                             tend)
+   
+   subroutine ocn_vvel_vert_advection_tend(verticalVelocity, layerThickness, dt, &
+      vertAleTransportTop, tend)!{{{
 
-      real (kind=RKIND), dimension(:,:), intent(in) :: verticalVelocity !< Input: current vertVel values
-      real (kind=RKIND), dimension(:,:), intent(in) :: layerThickness !< Input: Thickness
-      real (kind=RKIND), intent(in) :: dt !< Input: Timestep
-      real (kind=RKIND), dimension(:,:), intent(inout) :: tend !< Input/Output: VertVel tendency
+      implicit none 
 
-      integer :: i, iCell, iEdge, k, cell1, cell2
-      integer :: nVertLevels
-      integer, pointer :: nCells, nEdges, maxEdges
-      real (kind=RKIND), parameter :: eps = 1.e-10_RKIND
+      !*** input parameters 
 
-      !  Compute the high order vertical flux. now to be consistent with Horizontal
-! momentum
+      real (kind=RKIND), dimension(:,:), intent(in) :: & 
+         verticalVelocity !< Input: non-hydrostatic vertical velocity
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         layerThickness !< Input: layer thickness at cells
+      real (kind=RKIND), intent(in) :: dt !< Input: time-step
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         vertAleTransportTop !< Input: velocity through layer top levels
+      
+      !*** output parameters
 
-        !omp do schedule(runtime)
-        do iCell = 1, nCellsOwned
-          do k=2,maxLevelCell(iCell)
-            tend(k,iCell) = tend(k,iCell) - 0.5_RKIND*(verticalVelocity(k-1,iCell)**2.0 - &
-                              verticalVelocity(k+1,iCell)**2.0) / (layerThickness(k-1,iCell) + &
-                              layerThickness(k,iCell))
-          end do
-        enddo
-        !omp end do
+      real (kind=RKIND), dimension(:,:), intent(inout) :: &
+         tend !< Output: vvel tendencies
 
-!        !$omp do schedule(runtime) private(k, verticalWeightK, verticalWeightKm1)
-!        do iCell = 1, nCells
-!          k = max(1, min(maxLevelCell(iCell), 2))
-!          verticalWeightK = verticalCellSize(k-1, iCell) / (verticalCellSize(k, iCell) + verticalCellSize(k-1, iCell))
-!          verticalWeightKm1 = verticalCellSize(k, iCell) / (verticalCellSize(k, iCell) + verticalCellSize(k-1, iCell))
-!          high_order_vert_flux(k,iCell) = 0.5*(verticalVelocity(k,iCell)**2
+      integer :: iCell, k 
+      integer, pointer :: nCells
+      integer, dimension(:), pointer :: maxLevelCell
+      real (kind=RKIND) :: levelThickness, vertVelocityUp, vertVelocityDn
 
-!          do k=3,maxLevelCell(iCell)-1
-!             select case (vertOrder)
-!             case (vertOrder4) !need to inline these
-!               high_order_vert_flux(k, iCell) = mpas_tracer_advection_vflux4( tracer_cur(k-2,iCell),tracer_cur(k-1,iCell),  &
-!                                      tracer_cur(k  ,iCell),tracer_cur(k+1,iCell), w(k,iCell))
-!             case (vertOrder3)
-!               high_order_vert_flux(k, iCell) = mpas_tracer_advection_vflux3( tracer_cur(k-2,iCell),tracer_cur(k-1,iCell),  &
-!                                      tracer_cur(k  ,iCell),tracer_cur(k+1,iCell), w(k,iCell), coef3rdOrder )
-!             case (vertOrder2)
-!               verticalWeightK = verticalCellSize(k-1, iCell) / (verticalCellSize(k, iCell) + verticalCellSize(k-1, iCell))
-!               verticalWeightKm1 = verticalCellSize(k, iCell) / (verticalCellSize(k, iCell) + verticalCellSize(k-1, iCell))
-!               high_order_vert_flux(k,iCell) = w(k, iCell) * (verticalWeightK * tracer_cur(k, iCell) &
-!                                             + verticalWeightKm1 * tracer_cur(k-1, iCell))
-!             end select ! vertOrder
-!          end do
+      ! -w_ale * dw/dz
+      !$omp parallel
+      !$omp do schedule(runtime) &
+      !$omp private(k, levelThickness, vertVelocityUp, vertVelocityDn)
+      do iCell = 1, nCells
+         ! w_ale = 0.0 at k==1
+         do k = 2, maxLevelCell(iCell)
+            levelThickness = &
+               0.5_RKIND * (layerThickness(k-1,iCell) + layerThickness(k,iCell))
 
-!          k = max(1, maxLevelCell(iCell))
-!          verticalWeightK = verticalCellSize(k-1, iCell) / (verticalCellSize(k, iCell) + verticalCellSize(k-1, iCell))
-!          verticalWeightKm1 = verticalCellSize(k, iCell) / (verticalCellSize(k, iCell) + verticalCellSize(k-1, iCell))
-!          high_order_vert_flux(k,iCell) = w(k,iCell)*(verticalWeightK*tracer_cur(k,iCell)+verticalWeightKm1*tracer_cur(k-1,iCell))
-!        end do ! iCell Loop
-!        !$omp end do
+            vertVelocityUp = &
+               0.5_RKIND * (verticalVelocity(k-1,iCell) + verticalVelocity(k,iCell))
+            vertVelocityDn = &
+               0.5_RKIND * (verticalVelocity(k+1,iCell) + verticalVelocity(k,iCell))
 
+            tend(k,iCell) = tend(k,iCell) - &
+               vertAleTransportTop(k,iCell) * &
+                  (vertVelocityUp - vertVelocityDn) / levelThickness
+         end do
+      end do
+      !$omp end do
+      !$omp end parallel
 
-end subroutine ocn_vvel_vert_advection_tend!}}}
+   end subroutine ocn_vvel_vert_advection_tend!}}}
 
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 !
-!  routine ocn_vvel_vert_advection_std_init
+!  routine ocn_vvel_vert_advection_init
 !
-!> \brief MPAS initialize vertical velocity vertical advection tendency.
-!> \author Luke Van Roekel
-!> \date   January 2021
+!> \brief MPAS initialize vertical velocity advection tendency.
+!> \author Luke Van Roekel, Darren Engwirda, Sara Calandrini
+!> \date   January 2021, updated November 2021
 !> \details
-!>  This routine initializes constants and choices for the standard vertical
-!>  velocity vertical advection tendency.
+!>  This routine initializes constants and choices for the (non-hydrostatic) 
+!>  vertical velocity advection tendency
 !
 !-------------------------------------------------------------------------------
 
-   subroutine ocn_vvel_vert_advection_init(vertAdvOrder, &
-                                            inCoef3rdOrder, err) !{{{
+   subroutine ocn_vvel_vert_advection_init(err) !{{{
+
+      implicit none
 
       !*** input parameters
-!FIXME -- NOTE this routine may not be necessary.
-      integer, intent(in) :: &
-         vertAdvOrder         !< [in] Order for vertical advection
-      real (kind=RKIND), intent(in) :: &
-         inCoef3rdOrder       !< [in] Coefficient for blending advection orders
 
       !*** output parameters
 
-      integer, intent(out) :: err !< [out] Error Flag
-
-      ! end of preamble
-      !----------------
-      ! begin code
+      integer, intent(out) :: err !< [out] Error Flag  
 
       err = 0 ! set error code to success
 
-      ! set choice of vertical advection order NOT FUNCTIONAL YET
-      select case (vertAdvOrder)
-      case (2)
-         vertOrder = vertOrder2
-      case (3)
-         vertOrder = vertOrder3
-      case (4)
-         vertOrder = vertOrder4
-      case default
-         vertOrder = vertOrder2
-         call mpas_log_write( &
-         'Invalid value for vertical velocity vertical advection order, defaulting to 2nd order',&
-         MPAS_LOG_WARN)
-      end select ! vertAdvOrder
+      ! don't have actual choices for vvel advection here, unlike tracers
 
    end subroutine ocn_vvel_vert_advection_init!}}}
 

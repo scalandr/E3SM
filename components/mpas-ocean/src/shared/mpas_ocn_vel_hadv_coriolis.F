@@ -266,11 +266,12 @@ contains
            cell1 = cellsOnEdge(1,iEdge)
            cell2 = cellsOnEdge(2,iEdge)
 
-           do k=1,maxLevelEdgeTop(iEdge)
-              wav = 0.25_RKIND * (verticalVelocity(k,cell1) + verticalVelocity(k,cell2) + &
-                      verticalVelocity(k+1,cell1) + verticalVelocity(k+1,cell2))
-              tend(k, iEdge) = tend(k,iEdge) - 2.0_RKIND*omega*cos(latEdge(iEdge))*wav
-           end do
+           !k-indexing can't be right here?
+           !do k=1,maxLevelEdgeTop(iEdge)
+           !   wav = 0.25_RKIND * (verticalVelocity(k,cell1) + verticalVelocity(k,cell2) + &
+           !           verticalVelocity(k+1,cell1) + verticalVelocity(k+1,cell2))
+           !   tend(k, iEdge) = tend(k,iEdge) - 2.0_RKIND*omega*cos(latEdge(iEdge))*wav
+           !end do
         end do
         !$omp end do
         !$omp end parallel
