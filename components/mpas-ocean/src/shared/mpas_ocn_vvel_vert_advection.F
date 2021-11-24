@@ -72,15 +72,13 @@ module ocn_vvel_vert_advection
          tend !< Output: vvel tendencies
 
       integer :: iCell, k 
-      integer, pointer :: nCells
-      integer, dimension(:), pointer :: maxLevelCell
       real (kind=RKIND) :: levelThickness, vertVelocityUp, vertVelocityDn
 
       ! -w_ale * dw/dz
       !$omp parallel
       !$omp do schedule(runtime) &
       !$omp private(k, levelThickness, vertVelocityUp, vertVelocityDn)
-      do iCell = 1, nCells
+      do iCell = 1, nCellsOwned
          ! w_ale = 0.0 at k==1
          do k = 2, maxLevelCell(iCell)
             levelThickness = &

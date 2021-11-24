@@ -75,14 +75,8 @@ module ocn_vvel_horiz_advection
 
       integer :: iCell, iEdge, jEdge, k, cell1, cell2
       integer :: nVertLevels, nCells, nEdges
-      integer, dimension(:), pointer :: nEdgesOnCell, nCellsArray, nEdgesArray
-      integer, dimension(:,:), pointer :: cellsOnEdge, edgesOnCell
-      integer, dimension(:), pointer :: maxLevelCell
-      integer, dimension(:), pointer :: maxLevelEdgeTop
-      integer, dimension(:, :), pointer :: edgeSignOnCell, edgeMask
-
       real (kind=RKIND) :: vertVelocityFlux
-      real (kind=RKIND), dimension(:), pointer :: dvEdge, areaCell
+ 
       real (kind=RKIND), dimension(:), allocatable :: invVolCell
       real (kind=RKIND), dimension(:,:), allocatable :: horizFlux
 
@@ -90,8 +84,8 @@ module ocn_vvel_horiz_advection
       nVertLevels = size(verticalVelocity,dim=1)
 
       ! Initialize pointers
-      nCells = nCellsHalo( 1 )
-      nEdges = nEdgesHalo( 2 )
+      nCells = nCellsHalo( 1 ) !1
+      nEdges = nEdgesHalo( 2 ) !2
       allocate(invVolCell(nVertLevels))
       allocate(horizFlux(nVertLevels, nEdges)) 
 
@@ -107,7 +101,7 @@ module ocn_vvel_horiz_advection
       !$omp parallel
       !$omp do schedule(runtime) &
       !$omp private(k, cell1, cell2, vertVelocityFlux)
-      do iEdge = 1, nEdges
+      do iEdge = 1, nEdges 
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          do k = 1, maxLevelEdgeTop(iEdge)
