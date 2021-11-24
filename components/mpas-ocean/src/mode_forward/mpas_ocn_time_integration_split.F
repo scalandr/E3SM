@@ -320,6 +320,7 @@ module ocn_time_integration_split
          call mpas_pool_get_array(statePool, 'verticalVelocity', verticalVelocityCur, 1)
          call mpas_pool_get_array(statePool, 'verticalVelocity', verticalVelocityNew, 2)
          call mpas_pool_get_array(statePool, 'nonhydrostaticPressure', nonhydrostaticPressure, 2)
+         call mpas_pool_get_array(statePool, 'nonhydrostaticPressure', nonhydrostaticPressureOld, 1)
       end if
       if(config_use_two_equation_turbulence_model) then
          call mpas_pool_get_array(statePool, 'tke', tkeNew, 2)
@@ -2093,9 +2094,15 @@ module ocn_time_integration_split
               verticalVelocityNew, layerThicknessNew, layerThickEdge, &
               nonHydrostaticPressure, dminfo % comm, dt)
 
-         call mpas_timer_start('se NHpressure tend halo pressure')
+         !call mpas_timer_start('se NHpressure tend halo pressure')
+         !call mpas_dmpar_field_halo_exch(domain, 'nonhydrostaticPressure', timeLevel=2)
+         !call mpas_timer_stop('se NHpressure tend halo pressure') 
+
+         call mpas_timer_start('se NH pressure tend halo pressure')
          call mpas_dmpar_field_halo_exch(domain, 'nonhydrostaticPressure', timeLevel=2)
-         call mpas_timer_stop('se NHpressure tend halo pressure')
+         call mpas_dmpar_field_halo_exch(domain, 'nonhydrostaticPressure', timeLevel=1)
+         call mpas_dmpar_field_halo_exch(domain, 'nhPressureCorrection')
+         call mpas_timer_stop('se NH pressure tend halo pressure')
 
          call ocn_nonhydrostatic_pressure_update_velocity(normalVelocityNew, &
               verticalVelocityNew, layerThicknessNew, layerThickEdge, &
