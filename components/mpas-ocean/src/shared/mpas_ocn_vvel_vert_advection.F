@@ -50,48 +50,44 @@ module ocn_vvel_vert_advection
 !>  NOTE this is only active for non-hydrostatic mode
 !
 !-----------------------------------------------------------------------
-   
-   subroutine ocn_vvel_vert_advection_tend(verticalVelocity, layerThickness, dt, &
-      vertAleTransportTop, tend)!{{{
 
-      implicit none 
+   subroutine ocn_vvel_vert_advection_tend(verticalVelocity, &!{{{
+                                             layerThickness, dt, &
+                                             vertAleTransportTop, tend)
 
-      !*** input parameters 
+      implicit none
 
-      real (kind=RKIND), dimension(:,:), intent(in) :: & 
-         verticalVelocity !< Input: non-hydrostatic vertical velocity
+      real (kind=RKIND), dimension(:,:), intent(in) :: verticalVelocity !< Input: current vertVel values
+      real (kind=RKIND), dimension(:,:), intent(in) :: layerThickness !< Input: Thickness
+      real (kind=RKIND), intent(in) :: dt !< Input: Timestep
+      real (kind=RKIND), dimension(:,:), intent(inout) :: tend !< Input/Output: VertVel tendency
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         layerThickness !< Input: layer thickness at cells
-      real (kind=RKIND), intent(in) :: dt !< Input: time-step
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         vertAleTransportTop !< Input: velocity through layer top levels
-      
-      !*** output parameters
-
-      real (kind=RKIND), dimension(:,:), intent(inout) :: &
-         tend !< Output: vvel tendencies
-
-      integer :: iCell, k 
+         vertAleTransportTop  !< [in] velocity through layer top levels
+      integer :: i, iCell, iEdge, k, cell1, cell2
+      integer :: nCells, nVertLevels
+      integer :: nEdges, maxEdges
+      real (kind=RKIND), parameter :: eps = 1.e-10_RKIND
       real (kind=RKIND) :: levelThickness, vertVelocityUp, vertVelocityDn
 
+
+      nCells = nCellsAll
       ! -w_ale * dw/dz
       !$omp parallel
-      !$omp do schedule(runtime) &
+      !$omp do schedule(runtime)
       !$omp private(k, levelThickness, vertVelocityUp, vertVelocityDn)
-      do iCell = 1, nCellsOwned
-         ! w_ale = 0.0 at k==1
+      do iCell = 1, nCells
+         !w_ale = 0.0 at k==1
          do k = 2, maxLevelCell(iCell)
-            levelThickness = &
-               0.5_RKIND * (layerThickness(k-1,iCell) + layerThickness(k,iCell))
+            levelThickness = 0.5_RKIND * (layerThickness(k-1,iCell) + &
+                                          layerThickness(k  ,iCell))
 
-            vertVelocityUp = &
-               0.5_RKIND * (verticalVelocity(k-1,iCell) + verticalVelocity(k,iCell))
-            vertVelocityDn = &
-               0.5_RKIND * (verticalVelocity(k+1,iCell) + verticalVelocity(k,iCell))
-
-            tend(k,iCell) = tend(k,iCell) - &
-               vertAleTransportTop(k,iCell) * &
-                  (vertVelocityUp - vertVelocityDn) / levelThickness
+            vertVelocityUp = 0.5_RKIND * (verticalVelocity(k-1,iCell) + &
+                                          verticalVelocity(k  ,iCell))
+            vertVelocityDn = 0.5_RKIND * (verticalVelocity(k+1,iCell) + &
+                                          verticalVelocity(k  ,iCell))
+            
+            tend(k,iCell) = tend(k,iCell) - vertAleTransportTop(k,iCell) * &
+                                (vertVelocityUp - vertVelocityDn) / levelThickness
          end do
       end do
       !$omp end do
@@ -120,7 +116,7 @@ module ocn_vvel_vert_advection
 
       !*** output parameters
 
-      integer, intent(out) :: err !< [out] Error Flag  
+      integer, intent(out) :: err !< [out] Error Flag
 
       err = 0 ! set error code to success
 

@@ -67,7 +67,6 @@ contains
 !> \author  Luke Van Roekel, Darren Engwirda, Sara Calandrini
 !> \date    January 2021, updated November 2021
 !> \details
-
 !>  This routine computes the PGF tendencies for the vertical momentum based on 
 !>  current state.
 !
@@ -135,10 +134,11 @@ contains
       do iCell= 1, nCells
          tend(1,iCell) = tend(1,iCell) - & ! nhPressure = 0.0 at surface
             2.0_RKIND * (-nhPressure(1,iCell)) / layerThickness(1,iCell)
+
          do k = 2, maxLevelCell(iCell)
             tend(k,iCell) = tend(k,iCell) - &
                2.0_RKIND * (nhPressure(k-1,iCell) - nhPressure(k,iCell)) &
-                  / (layerThickness(k-1,iCell) + layerThickness(k,iCell)) 
+                  / (layerThickness(k-1,iCell) + layerThickness(k,iCell))
          end do
 
       end do

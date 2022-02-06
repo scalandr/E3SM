@@ -16,7 +16,6 @@
 !>  This module contains initialization and driver routines for computing (non-hydrostatic) 
 !>  vertical velocity advection tendencies. It is based, in part, on the tracer advection 
 !>  code.
-!>
 !
 !-------------------------------------------------------------------------------
 
@@ -65,9 +64,12 @@ module ocn_vvel_advection
 !
 !-------------------------------------------------------------------------------
 
-   subroutine ocn_vvel_advection_tend(meshPool, verticalVelocity, normalThicknessFlux,       &
-                                        layerThickness, vertAleTransportTop, dt,          &
-                                        tend)!{{{
+   !subroutine ocn_vvel_advection_tend(meshPool, verticalVelocity, normalThicknessFlux,       &
+   !                                     layerThickness, vertAleTransportTop, dt,          &
+   !                                     tend)!{{{
+
+   subroutine ocn_vvel_advection_tend(verticalVelocity, normalThicknessFlux,       &
+      layerThickness, layerThicknessEdge, vertAleTransportTop, dt, tend)!{{{
 
       implicit none
 
@@ -77,17 +79,18 @@ module ocn_vvel_advection
          tend            !< [in,out] vertical velocity tendency to which advection added
 
       !*** Input parameters
-
-      type (mpas_pool_type), intent(in) :: &
-         meshPool                     !< [in] mesh information
+ 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
+
          verticalVelocity             !< [in] non-hydrostatic vertical velocity
+
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          normalThicknessFlux          !< [in] thickness weighted horizontal velocity
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         layerThickness               !< [in] thickness field at cell centers
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         vertAleTransportTop          !< [in] velocity through layer top levels
+         layerThickness,     &      !< [in] Thickness field at cell centers
+         vertAleTransportTop, &     !< [in] velocity through layer top levels
+         layerThicknessEdge
+
       real (kind=RKIND), intent(in) :: &
          dt                           !< [in] time-step
 
@@ -101,10 +104,10 @@ module ocn_vvel_advection
       call mpas_timer_start("Vertical Velocity adv")
 
       call ocn_vvel_horiz_advection_tend(verticalVelocity, normalThicknessFlux, &
-         layerThickness, dt, meshPool, tend)
+           layerThickness, dt, tend)
 
-      call ocn_vvel_vert_advection_tend(verticalVelocity, layerThickness, dt, &
-                                       vertAleTransportTop, tend)
+      call ocn_vvel_vert_advection_tend( verticalVelocity, layerThickness, dt, &
+                                         vertAleTransportTop, tend)
 
       call mpas_timer_stop("Vertical Velocity adv")
 
@@ -143,15 +146,15 @@ module ocn_vvel_advection
       ! set all other options from submodule initialization routines
       if (err.eq.0) then     
          call ocn_vvel_horiz_advection_init(err)
-      end if 
+      end if
 
       if (err.eq.0) then
          call ocn_vvel_vert_advection_init (err)
-      end if 
+      end if
 
       ! if an error is returned from init routines, write an error
       ! message and return a non-zero error code
-      if (err /= 0) then 
+      if (err /= 0) then
          err = 1
          call mpas_log_write(                                 &
             'Error encountered during vertical velocity advection init', &

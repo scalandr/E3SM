@@ -176,11 +176,14 @@ contains
          dcEdgeInv = 1.0_RKIND / dcEdge(iEdge)
          dvEdgeInv = 1.0_RKIND / dvEdge(iEdge)
 
+         visc2 =  viscDel2*meshScalingDel2(iEdge)
+
          do k = minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
+
             ! Here -( relativeVorticity(k,vertex2) - 
             !         relativeVorticity(k,vertex1) ) / dvEdge(iEdge)
             ! is - \nabla relativeVorticity pointing from vertex 2 
-            ! to vertex 1, or equivalently
+             ! to vertex 1, or equivalently
             ! + k \times \nabla relativeVorticity pointing from cell1 
             ! to cell2.
 
@@ -188,7 +191,8 @@ contains
                    -(relVort(k,vertex2)-relVort(k,vertex1))*dvEdgeInv
 
             tend(k,iEdge) = tend(k,iEdge) + &
-                            edgeMask(k,iEdge)*viscosity(k,iEdge)*uDiff
+                            edgeMask(k,iEdge)*visc2*uDiff
+                            !edgeMask(k,iEdge)*viscosity(k,iEdge)*uDiff
 
          end do
       end do

@@ -339,9 +339,13 @@ subroutine ocn_tend_vvel(tendPool, statePool, forcingPool, meshPool, &
    !
    ! velocity tendency: horizontal and vertical advection
    !
-   call ocn_vvel_advection_tend(meshPool, verticalVelocity, normalThicknessFlux,       &
-                                        layerThickness, vertAleTransportTop, dt,          &
-                                        tend_verticalVelocity)
+   !call ocn_vvel_advection_tend(meshPool, verticalVelocity, normalThicknessFlux,       &
+   !                                     layerThickness, vertAleTransportTop, dt,          &
+   !                                     tend_verticalVelocity)
+
+   call ocn_vvel_advection_tend(verticalVelocity, normalThicknessFlux,       &
+                                        layerThickness, layerThickEdge, vertAleTransportTop, &
+                                        dt, tend_verticalVelocity)
 
    !
    ! velocity tendency: pressure gradient

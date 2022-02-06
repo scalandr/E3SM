@@ -158,8 +158,6 @@ mpas_ocn_vvel_vert_advection.o: mpas_ocn_mesh.o mpas_ocn_tracer_advection_shared
 
 mpas_ocn_vvel_horiz_advection.o: mpas_ocn_tracer_advection_shared.o mpas_ocn_mesh.o mpas_ocn_constants.o mpas_ocn_diagnostics_variables.o mpas_ocn_config.o
 
-mpas_ocn_vvel_horiz_advection_old.o: mpas_ocn_tracer_advection_shared.o mpas_ocn_mesh.o mpas_ocn_constants.o mpas_ocn_diagnostics_variables.o mpas_ocn_config.o
-
 mpas_ocn_vvel_hmix_del2.o: mpas_ocn_diagnostics_variables.o mpas_ocn_constants.o mpas_ocn_config.o
 
 mpas_ocn_vvel_advection.o: mpas_ocn_constants.o mpas_ocn_config.o mpas_ocn_vvel_horiz_advection.o mpas_ocn_vvel_vert_advection.o
@@ -216,7 +214,7 @@ mpas_ocn_equation_of_state_wright.o: mpas_ocn_constants.o mpas_ocn_config.o
 
 mpas_ocn_test.o:  mpas_ocn_constants.o mpas_ocn_config.o
 
-mpas_ocn_constants.o mpas_ocn_config.o:
+mpas_ocn_constants.o: mpas_ocn_config.o
 
 mpas_ocn_forcing.o: mpas_ocn_constants.o mpas_ocn_config.o mpas_ocn_forcing_restoring.o mpas_ocn_diagnostics_variables.o
 

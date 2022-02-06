@@ -26,8 +26,9 @@ module ocn_vvel_horiz_advection
    use mpas_pool_routines
    use mpas_io_units
    use mpas_threading
-   use ocn_config
    use ocn_mesh
+   use ocn_config
+   use mpas_tracer_advection_helpers
    use ocn_tracer_advection_shared
    use ocn_diagnostics_variables
 
@@ -52,40 +53,33 @@ module ocn_vvel_horiz_advection
 !>  NOTE this is only active for non-hydrostatic mode
 !
 !-----------------------------------------------------------------------
-
-   subroutine ocn_vvel_horiz_advection_tend(verticalVelocity, &
-      normalThicknessFlux, layerThickness, dt, meshPool, tend)!{{{ 
+   subroutine ocn_vvel_horiz_advection_tend(verticalVelocity, normalThicknessFlux, &!{{{
+                                             layerThickness, dt, tend)
 
       implicit none
 
-      !*** input parameters
+      real (kind=RKIND), dimension(:,:), intent(in) :: normalThicknessFLux !< Input: Thichness weighted velocitiy
+      real (kind=RKIND), dimension(:,:), intent(in) :: layerThickness !< Input: Thickness
+      real (kind=RKIND), dimension(:,:), intent(in) :: verticalVelocity
+      real (kind=RKIND), intent(in) :: dt !< Input: Timestep
+      real (kind=RKIND), dimension(:,:), intent(inout) :: tend !< Input/Output: Vertical Velocity tendency
 
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         verticalVelocity                   !< [in] non-hydrostatic vertical velocity
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         normalThicknessFlux                !< [in] normal thickness flux uh at edges
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         layerThickness                     !< [in] layer thickness at cells
-      real (kind=RKIND), intent(in) :: dt   !< [in] time-step
-      type (mpas_pool_type), intent(in) :: meshPool !< [in] mesh information
-
-      !*** output parameters
-      real (kind=RKIND), dimension(:,:), intent(inout) :: &
-         tend                                       !< [out] vvel tendencies
-
-      integer :: iCell, iEdge, jEdge, k, cell1, cell2
+      integer :: i, iCell, jEdge, iEdge, k, cell1, cell2
       integer :: nVertLevels, nCells, nEdges
-      real (kind=RKIND) :: vertVelocityFlux
- 
-      real (kind=RKIND), dimension(:), allocatable :: invVolCell
+
+      real (kind=RKIND) :: vertVelocityFlux, vvel_weight, invAreaCell1
+
       real (kind=RKIND), dimension(:,:), allocatable :: horizFlux
+      real (kind=RKIND), dimension(:), allocatable :: invVolCell
+
+      real (kind=RKIND), parameter :: eps = 1.e-10_RKIND
 
       ! Get dimensions
-      nVertLevels = size(verticalVelocity,dim=1)
+     nVertLevels = size(verticalVelocity,dim=1)
 
       ! Initialize pointers
-      nCells = nCellsHalo( 1 ) !1
-      nEdges = nEdgesHalo( 2 ) !2
+      nCells = nCellsHalo( 2 ) !1
+      nEdges = nEdgesHalo( 3 ) !2
       allocate(invVolCell(nVertLevels))
       allocate(horizFlux(nVertLevels, nEdges)) 
 
@@ -104,6 +98,7 @@ module ocn_vvel_horiz_advection
       do iEdge = 1, nEdges 
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
+         !omp do schedule(runtime)
          do k = 1, maxLevelEdgeTop(iEdge)
             if (k .gt. 1) then
                vertVelocityFlux = &
@@ -122,12 +117,12 @@ module ocn_vvel_horiz_advection
       end do
       !$omp end do
       !$omp end parallel
-     
+
       ! eval. tendencies as div(u*h*w) / (A*h)
       !$omp parallel
       !$omp do schedule(runtime) &
       !$omp private(k, iEdge, jEdge, invVolCell)
-      do iCell = 1, nCells
+        do iCell = 1, nCells
          invVolCell(:) =-1.0e34_RKIND
          invVolCell(1) = 1.0_RKIND / (areaCell(iCell) * layerThickness(1,iCell))
          do k = 2, maxLevelCell(iCell)
@@ -147,7 +142,7 @@ module ocn_vvel_horiz_advection
       !$omp end parallel
 
       deallocate(horizFlux)
-      deallocate(invVolCell) 
+      deallocate(invVolCell)
 
    end subroutine ocn_vvel_horiz_advection_tend!}}}
 
@@ -164,11 +159,9 @@ module ocn_vvel_horiz_advection
 !
 !-------------------------------------------------------------------------------
 
-   subroutine ocn_vvel_horiz_advection_init(err) !{{{ 
+   subroutine ocn_vvel_horiz_advection_init(err) !{{{
 
       implicit none
-
-      !*** input parameters 
 
       !*** output parameters
 

@@ -166,6 +166,7 @@ contains
          !$omp end do
          !$omp end parallel
       end if
+
       ! compute a boundary mask to enforce insulating boundary conditions in the horizontal
       !
       !$omp parallel
@@ -179,7 +180,8 @@ contains
           cell1 = cellsOnEdge(1,iEdge)
           cell2 = cellsOnEdge(2,iEdge)
 
-          r_tmp = dvEdge(iEdge) / dcEdge(iEdge)
+          !r_tmp = dvEdge(iEdge) / dcEdge(iEdge)
+          r_tmp = meshScalingDel2(iEdge) * eddyVisc2 * dvEdge(iEdge) / dcEdge(iEdge)
 
           do k = 2, maxLevelEdgeTop(iEdge)
               ! \kappa_2 \nabla \phi on edge
@@ -189,6 +191,7 @@ contains
               flux = 0.5_RKIND*(layerThicknessEdge(k, iEdge) + layerThicknessEdge(k-1,iEdge)) &
                         * vvel_turb_flux * r_tmp
 
+              !tend(k, iCell) = tend(k, iCell) - eddyViscArr(k,iEdge) * edgeSignOnCell(i, iCell) * flux * invAreaCell
               tend(k, iCell) = tend(k, iCell) - eddyViscArr(k,iEdge) * edgeSignOnCell(i, iCell) * flux * invAreaCell
           end do
         end do
