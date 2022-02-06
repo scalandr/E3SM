@@ -141,6 +141,10 @@ contains
       !$omp private(k, iCell, fCellExtended) 
       do iCell= 1, nCells
 
+         fCellExtended = 2.0_RKIND * omega * cos(latCell(iCell))
+
+         tend(1,iCell) = tend(1,iCell) + fCellExtended * velocityZonal(1,iCell)
+
          do k = 2, maxLevelCell(iCell)
             tend(k,iCell) = tend(k,iCell) + 0.5_RKIND * &
                fCellExtended * (velocityZonal(k,iCell) + velocityZonal(k-1,iCell))
