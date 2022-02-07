@@ -122,7 +122,7 @@ module ocn_compute_nonhydrostatic_pressure
 
     !call ocn_nonhydrostatic_pressure_solve(mpi_comm, reuse_preconditioner, nhPressureCorrection)
 
-    call ocn_nonhydrostatic_solver_everything_luke(normalVelocityNew, &
+    call ocn_nonhydrostatic_solver_everything(normalVelocityNew, &
        verticalVelocityNew, layerThickness, layerThicknessEdge, mpi_comm, &
        dt, nhPressureCorrection)
 

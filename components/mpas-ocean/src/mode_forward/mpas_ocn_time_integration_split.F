@@ -2090,9 +2090,11 @@ module ocn_time_integration_split
       ! the change due to implicit vertical mixing across the boundary.
 
       if(config_enable_nonhydrostatic_mode) then
+         dminfo = domain % dminfo
          call ocn_nonhydrostatic_pressure_tend(normalVelocityNew, &
               verticalVelocityNew, layerThicknessNew, layerThickEdge, &
               nonHydrostaticPressure, dminfo % comm, dt)
+              !nonHydrostaticPressure, domain % dminfo % comm, dt)
 
          !call mpas_timer_start('se NHpressure tend halo pressure')
          !call mpas_dmpar_field_halo_exch(domain, 'nonhydrostaticPressure', timeLevel=2)
