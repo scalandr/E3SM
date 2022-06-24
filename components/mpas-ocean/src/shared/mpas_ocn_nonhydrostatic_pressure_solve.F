@@ -298,7 +298,7 @@ module ocn_compute_nonhydrostatic_pressure
               ! this map could actually create unreferenced rows, etc
               ! when cells are masked out under bathymetry?
               iCell3d = (indexToCellId(iCell) - 1) * nVertLevels + k - 1
-              jCell3d = (indexToCellId(jCell) - 1) * nVertLevels + k - 1   
+              jCell3d = (indexToCellId(jCell) - 1) * nVertLevels + k - 1
      
               insertVal = +1 * layerThicknessEdge(k,iEdge) * xEdge
               call MatSetValues(Amat, 1, iCell3d, 1, jCell3d, insertVal, ADD_VALUES, petsc_err)
@@ -309,11 +309,11 @@ module ocn_compute_nonhydrostatic_pressure
         end do
 
         ! for non-flat bathymetry
-        do k = maxLevelCell(iCell)+1, nVertLevels
-           iCell3D = (indexToCellId(iCell) - 1) * nVertLevels + k - 1
-           insertVal = 1.0_RKIND
-           call MatSetValues(Amat, 1, iCell3d, 1, iCell3d, insertVal, ADD_VALUES, petsc_err)
-        end do
+        !do k = maxLevelCell(iCell)+1, nVertLevels
+        !   iCell3D = (indexToCellId(iCell) - 1) * nVertLevels + k - 1
+        !   insertVal = 1.0_RKIND
+        !   call MatSetValues(Amat, 1, iCell3d, 1, iCell3d, insertVal, ADD_VALUES, petsc_err)
+        !end do
 
         ! z-part of del^2 operator
 

@@ -273,6 +273,7 @@ contains
 
           !    if(maxLevelEdgeTop(iEdge) > 0) then
               ! Compute dq/dz (assume q=0 at the surface)
+!               if (boundaryEdge(1,iEdge) .ge. 1) cycle
 !               dqdz(1) = 0.25_RKIND*(-2.0_RKIND*nonhydrostaticPressure(1,cell1) / (zMid(1,cell1) - &
 !                          zMid(2,cell1)) - 2.0_RKIND*nonhydrostaticPressure(1,cell2) / &
 !                          (zMid(1,cell2) - zMid(2,cell2)) + (nonhydrostaticPressure(1,cell1) - &
@@ -280,12 +281,14 @@ contains
 !                          (nonhydrostaticPressure(1,cell2) - nonhydrostaticPressure(2,cell2)) / &
 !                           (zMid(1,cell2) - zMid(2,cell2)))
 !               do k=2,maxLevelEdgeTop(iEdge)-1
+!                  if (boundaryEdge(k,iEdge) .ge. 1) cycle
 !                  dqdz(k) = 0.5_RKIND*((nonhydrostaticPressure(k-1,cell1) - nonhydrostaticPressure(k+1,cell1)) / &
 !                             (zMid(k-1,cell1) - zMid(k+1,cell1)) + (nonhydrostaticPressure(k-1,cell2) - &
 !                             nonhydrostaticPressure(k+1,cell2)) / (zMid(k-1,cell2) - zMid(k,cell2)))
 !               end do
 !
 !               k = maxLevelEdgeTop(iEdge)
+!               if (boundaryEdge(k,iEdge) .ge. 1) cycle
 !               dqdz(k) = 0.25_RKIND*((nonhydrostaticPressure(k-1,cell1) - nonhydrostaticPressure(k,cell1)) / &
 !                          (zMid(k-1,cell1) - zMid(k,cell1)) + (nonhydrostaticPressure(k-1,cell2) - &
 !                          nonhydrostaticPressure(k,cell2)) / (zMid(k-1,cell2) - zMid(k,cell2)) + &
@@ -298,6 +301,7 @@ contains
                   tend(k,iEdge) = tend(k,iEdge) + edgeMask(k,iEdge) * invdcEdge * ( &
                     - ( nonhydrostaticPressure(k,cell2) -             &
                     nonhydrostaticPressure(k,cell1) ) + 0.0_RKIND*dqdz(k)*density0Inv*        &
+                    !nonhydrostaticPressure(k,cell1) ) + dqdz(k)*density0Inv*        &
                     (zMid(k,cell2) - zMid(k,cell1)))
                enddo
 
@@ -664,6 +668,8 @@ contains
                invdcEdge = 1.0_RKIND / dcEdge(iEdge)
 
                k=1
+               if (boundaryEdge(k,iEdge) .ge. 1) cycle
+               !print*, iEdge, boundaryEdge(k,iEdge), cell1, cell2, zMid(k,cell2) - zMid(k+1,cell2)
                dqdza = 0.5_RKIND*((nonhydrostaticPressure(k,cell1) - nonhydrostaticPressure(k+1,cell1)          &
                   ) / (zMid(k,cell1) - zMid(k+1,cell1)) + (nonhydrostaticPressure(k,cell2) - &
                   nonhydrostaticPressure(k+1,cell2)) / (zMid(k,cell2) - zMid(k+1,cell2)))
@@ -672,6 +678,7 @@ contains
                   - dqdza*( zMid(k,cell2) - zMid(k,cell1) ) )
 
                do k=2,maxLevelEdgeTop(iEdge)-1
+                  if (boundaryEdge(k,iEdge) .ge. 1) cycle
                   dqdza = 0.5_RKIND*((nonhydrostaticPressure(k-1,cell1) - nonhydrostaticPressure(k+1,cell1)) &
                     / (zMid(k-1,cell1) - zMid(k+1,cell1)) + (nonhydrostaticPressure(k-1,cell2) - &
                     nonhydrostaticPressure(k+1,cell2)) / (zMid(k-1,cell2) - zMid(k+1,cell2)))
@@ -681,6 +688,7 @@ contains
                     nonhydrostaticPressure(k,cell1) ) - dqdza * (zMid(k,cell2) - zMid(k,cell1)))
                enddo
                k=maxLevelEdgeTop(iEdge)
+               if (boundaryEdge(k,iEdge) .ge. 1) cycle
                dqdza = 0.5_RKIND*((nonhydrostaticPressure(k-1,cell1) - nonhydrostaticPressure(k,cell1)) / &
                  (zMid(k-1,cell1) - zMid(k,cell1)) + (nonhydrostaticPressure(k-1,cell2) - &
                  nonhydrostaticPressure(k,cell2)) / (zMid(k-1,cell2) - zMid(k,cell1)))
