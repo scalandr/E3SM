@@ -496,8 +496,8 @@ contains
 !-----------------------------------------------------------------------
 
    subroutine ocn_tend_tracer(tendPool, statePool, forcingPool, &
-                              meshPool, swForcingPool, &
-                              dt, activeTracersOnlyIn, timeLevelIn )!{{{
+                              meshPool, swForcingPool, dt, activeTracersOnlyIn, &
+                              itimestep, firstBaroclinicStep, timeLevelIn )!{{{
 
       !-----------------------------------------------------------------
       ! input variables
@@ -512,6 +512,12 @@ contains
 
       logical, intent(in), optional :: &
          activeTracersOnlyIn  !< [in] only compute for active tracers
+
+      integer, intent(in) :: &
+         itimestep  !< [in] for offline passive tracers
+
+      logical, intent(in) :: &
+         firstBaroclinicStep  !< [in] which baroclinic step
 
       integer, intent(in), optional :: &
          timeLevelIn          !< [in] time index to use for state vars
@@ -659,6 +665,12 @@ contains
       ! allocate and transfer data not specific to tracer groups
       allocate(normalThicknessFlux(nVertLevels, nEdgesAll+1))
 
+      if (mod(itimestep,2)==1 .and. firstBaroclinicStep) then
+         do iEdge = 1, nEdgesAll
+            normalThicknessFluxAvg(:, iEdge) = 0.0_RKIND
+         end do
+      end if
+
       !$acc enter data create(normalThicknessFlux) &
       !$acc            copyin(layerThickness)
       !TEMPORARY - once diagnotics module ported, these should already
@@ -686,6 +698,32 @@ contains
       !$omp end do
       !$omp end parallel
 #endif
+
+      if (.not. firstBaroclinicStep) then
+         !$omp parallel
+         !$omp do schedule(runtime) private(iEdge)
+         do iEdge = 1, nEdgesAll
+            normalThicknessFluxAvg(:, iEdge) = normalThicknessFluxAvg(:, iEdge) + normalThicknessFlux(:, iEdge)
+         end do
+#ifndef MPAS_OPENACC
+         !$omp end do
+         !$omp end parallel
+#endif
+      end if
+
+      if (mod(itimestep,2)==0 .and. (.not. firstBaroclinicStep)) then
+        !$omp parallel
+        !$omp do schedule(runtime) private(k)
+         do iEdge = 1, nEdgesAll
+            do k = 1, nVertLevels
+              normalThicknessFluxAvg(k, iEdge) = 0.5_RKIND*normalThicknessFluxAvg(k, iEdge)
+            end do
+         end do
+#ifndef MPAS_OPENACC
+        !$omp end do
+        !$omp end parallel
+#endif
+      end if
 
       !
       ! Start computation of tracer tendencies.
@@ -1095,10 +1133,25 @@ contains
          !     -div( layerThickness \phi u)
          ! Tracer budget is computed and stored within the tracer adv
          ! routine
-         call ocn_tracer_advection_tend(tracerGroup, &
-                            normalThicknessFlux, vertAleTransportTop, &
-                            layerThickness, dt, tracerGroupTend, &
-                            computeBudgets)
+!         call ocn_tracer_advection_tend(tracerGroup, &
+!                            normalThicknessFlux, vertAleTransportTop, &
+!                            layerThickness, dt, tracerGroupTend, &
+!                            computeBudgets)
+
+         if(trim(groupItr % memberName)=='activeTracers') then
+            call ocn_tracer_advection_tend(tracerGroup, normalThicknessFlux, vertAleTransportTop, layerThickness, &
+               dt, tracerGroupTend, computeBudgets)
+         else
+            if (offlinePassive) then
+               if (mod(itimestep,2)==0) then
+                  call ocn_passive_tracer_advection_tend(tracerGroup, normalThicknessFluxAvg, &
+                     layerThickness, tracerGroupTend, computeBudgets)
+               end if
+            else
+               call ocn_tracer_advection_tend(tracerGroup, normalThicknessFlux, vertAleTransportTop, layerThickness, &
+                  dt, tracerGroupTend, computeBudgets)
+            end if
+         end if
 
          !$acc update host (activeTracerHorizontalAdvectionEdgeFlux, &
          !$acc              activeTracerHorizontalAdvectionTendency, &

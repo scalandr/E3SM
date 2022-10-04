@@ -87,7 +87,7 @@ module ocn_time_integration
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_timestep(domain, dt, timeStamp)!{{{
+   subroutine ocn_timestep(domain, dt, timeStamp, itimestep)!{{{
 
       !-----------------------------------------------------------------
       ! Input variables
@@ -98,6 +98,9 @@ module ocn_time_integration
 
       character(len=*), intent(in) :: &
          timeStamp       !< [in] current time step in simulation
+
+      integer, intent(in) :: &
+         itimestep    !< [in] number of current time-step
 
       !-----------------------------------------------------------------
       ! Input/Output variables
@@ -121,13 +124,13 @@ module ocn_time_integration
       ! Advance the model base on choice of time integration scheme
       select case (timeIntegratorChoice)
       case (timeIntSplitExplicit)
-         call ocn_time_integrator_split(domain, dt)
+         call ocn_time_integrator_split(domain, dt, itimestep)
       case (timeIntUnsplitExplicit)
-         call ocn_time_integrator_split(domain, dt)
+         call ocn_time_integrator_split(domain, dt, itimestep)
       case (timeIntSemiImplicit)
-         call ocn_time_integrator_si(domain, dt)
+         call ocn_time_integrator_si(domain, dt, itimestep)
       case (timeIntRK4)
-         call ocn_time_integrator_rk4(domain, dt)
+         call ocn_time_integrator_rk4(domain, dt, itimestep)
       end select
 
       ! compute time since start of simulation, in days

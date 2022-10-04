@@ -116,7 +116,7 @@ module ocn_time_integration_split
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_time_integrator_split(domain, dt)!{{{
+   subroutine ocn_time_integrator_split(domain, dt, itimestep)!{{{
 
       !-----------------------------------------------------------------
       ! Input variables
@@ -124,6 +124,9 @@ module ocn_time_integration_split
 
       real (kind=RKIND), intent(in) :: &
          dt              !< [in] time step (sec) to move forward
+
+      integer, intent(in) :: &
+         itimestep     !< [in] number of current time-step
 
       !-----------------------------------------------------------------
       ! Input/output variables
@@ -152,7 +155,8 @@ module ocn_time_integration_split
          tracersIdealAgeFieldsPool     ! structure holding idealAge-related fields
 
       logical :: &
-         activeTracersOnly   ! only compute tendencies for active tracers
+         activeTracersOnly, &! only compute tendencies for active tracers
+         firstBaroclinicStep
 
       logical, pointer :: &
          config_use_tracerGroup  ! flag for using each tracer group
@@ -269,6 +273,8 @@ module ocn_time_integration_split
       ! Remap variables
       real (kind=RKIND), dimension(:,:), pointer :: &
          layerThicknessLagNew
+
+      real (kind=RKIND), dimension(:,:), allocatable :: thickAdjust
 
       ! These are public variables used from the diagnostics module
       ! indexSurfaceVelocityZonal, indexSurfaceVelocityMeridional
@@ -388,6 +394,8 @@ module ocn_time_integration_split
         call ocn_transport_test_velocity(meshPool, daysSinceStartOfSim, &
           0.5*dt, normalVelocityCur)
       endif
+
+      allocate(thickAdjust(nVertLevels, nCellsAll))
 
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(normalVelocityCur, normalBarotropicVelocityCur, &
@@ -1661,8 +1669,10 @@ module ocn_time_integration_split
          ! only compute tendencies for active tracers on last large iteration
          if (splitExplicitStep < numTSIterations) then
             activeTracersOnly = .true.
+            firstBaroclinicStep = .true.
          else
             activeTracersOnly = .false.
+            firstBaroclinicStep = .false.
          endif
 
          ! Thickness tendency computations and thickness halo updates
@@ -1718,7 +1728,7 @@ module ocn_time_integration_split
          call mpas_timer_start('se tracer tend', .false.)
          call ocn_tend_tracer(tendPool, statePool, forcingPool, &
                               meshPool, swForcingPool, &
-                              dt, activeTracersOnly, 2)
+                              dt, activeTracersOnly, itimestep, firstBaroclinicStep, 2)
 
          call mpas_pool_get_array(tracersPool, 'activeTracers', &
                                                 tracersGroupCur, 1)
@@ -2097,21 +2107,86 @@ module ocn_time_integration_split
                                               modifiedGroupName, &
                                               tracersGroupTend)
 
-                     !$omp parallel
-                     !$omp do schedule(runtime) private(k)
-                     do iCell = 1, nCellsAll
-                     do k = minLevelCell(iCell), maxLevelCell(iCell)
-                        tracersGroupNew(:,k,iCell) = &
-                       (tracersGroupCur(:,k,iCell) * &
-                        layerThicknessCur(k,iCell) + dt* &
-                       tracersGroupTend(:,k,iCell))/ &
-                        layerThicknessNew(k,iCell)
-                     end do
-                     end do
+!                     !$omp parallel
+!                     !$omp do schedule(runtime) private(k)
+!                     do iCell = 1, nCellsAll
+!                     do k = minLevelCell(iCell), maxLevelCell(iCell)
+!                        tracersGroupNew(:,k,iCell) = &
+!                       (tracersGroupCur(:,k,iCell) * &
+!                        layerThicknessCur(k,iCell) + dt* &
+!                       tracersGroupTend(:,k,iCell))/ &
+!                        layerThicknessNew(k,iCell)
+!                     end do
+!                     end do
+!#ifndef MPAS_OPENACC
+!                     !$omp end do
+!                     !$omp end parallel
+!#endif
+
+                     if (trim(groupItr % memberName) == 'activeTracers') then
+                        !$omp parallel
+                        !$omp do schedule(runtime) private(k)
+                        do iCell = 1, nCellsAll
+                           do k = minLevelCell(iCell), maxLevelCell(iCell)
+                              tracersGroupNew(:,k,iCell) = (tracersGroupCur(:,k,iCell) * layerThicknessCur(k,iCell) + dt &
+                                                         * tracersGroupTend(:,k,iCell) ) / layerThicknessNew(k,iCell)
+                           end do
+                        end do
 #ifndef MPAS_OPENACC
-                     !$omp end do
-                     !$omp end parallel
+                        !$omp end do
+                        !$omp end parallel
 #endif
+                     else
+                        if (.not. offlinePassive) then
+                           !$omp parallel
+                           !$omp do schedule(runtime) private(k)
+                           do iCell = 1, nCellsAll
+                              do k = minLevelCell(iCell), maxLevelCell(iCell)
+                                 tracersGroupNew(:,k,iCell) = (tracersGroupCur(:,k,iCell) * layerThicknessCur(k,iCell) + dt &
+                                                            * tracersGroupTend(:,k,iCell) ) / layerThicknessNew(k,iCell)
+                              end do
+                           end do
+#ifndef MPAS_OPENACC
+                           !$omp end do
+                           !$omp end parallel
+#endif
+                        else
+                           if (itimestep==1) then
+                              do iCell = 1, nCellsAll
+                                 do k = minLevelCell(iCell), maxLevelCell(iCell)
+                                    layerThicknessOld(k,iCell) = layerThicknessCur(k,iCell)
+                                 end do
+                              end do
+                           end if
+                           if (mod(itimestep,2)==1) then
+                              do iCell = 1, nCellsAll
+                                 vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
+                              end do
+                           end if
+                           if (mod(itimestep,2)==0) then
+                              print*, 'itimestep ', itimestep
+                              !$omp parallel
+                              !$omp do schedule(runtime) private(k)
+                              do iCell = 1, nCellsAll
+                                 do k = minLevelCell(iCell), maxLevelCell(iCell)
+                                    thickAdjust(k,iCell) = layerThicknessCur(k,iCell) + dt * (layerThicknessTend(k,iCell)-vertAleTransportTop(k+1,iCell)+vertAleTransportTop(k,iCell))
+                                    vertAleTransportAvg(k, iCell) = 0.5_RKIND*(vertAleTransportAvg(k, iCell)+vertAleTransportTop(k,iCell))
+                                    tracersGroupNew(:,k,iCell) = (tracersGroupCur(:,k,iCell) * layerThicknessOld(k,iCell) + 2.0_RKIND*dt &
+                                                               * tracersGroupTend(:,k,iCell) ) / layerThicknessNew(k,iCell)
+                                                               !* tracersGroupTend(:,k,iCell)) / thickAdjust(k,iCell)
+                                    layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
+                                 end do
+                                 vertAleTransportAvg(maxLevelCell(iCell)+1, iCell) = 0.5_RKIND*(vertAleTransportAvg(maxLevelCell(iCell)+1, iCell)+vertAleTransportTop(maxLevelCell(iCell)+1,iCell))
+                              end do
+                              !$omp end do
+                              !$omp end parallel
+
+                              !tridiag solver for vertical diffusion and vertical advection
+                              call ocn_vmix_vertAdv_implicit_tracersOnly(2.0_RKIND*dt, itimestep, meshPool, &
+                                            statePool, forcingPool, scratchPool, err, 2)
+                           end if
+                        end if
+                     end if
 
                      ! limit salinity in separate loop
                      if (trim(groupItr%memberName) == &
@@ -2184,6 +2259,17 @@ module ocn_time_integration_split
                         !$omp end do
                         !$omp end parallel
 #endif
+
+                        do iTracer = 1, 3 !num_tracers
+                           do iCell = 1, nCellsAll !nCellsSolve
+                              do k=minLevelCell(iCell),maxLevelCell(iCell)
+                                 if(abs(tracersGroupNew(iTracer, k, iCell))>1.4_RKIND) then
+                                    print*, 'debug tr A', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                                 end if
+                              end do
+                           end do
+                        end do
+
                      end if ! debug tracers
                   end if ! use tracer group
                end if ! tracer
@@ -2489,6 +2575,20 @@ module ocn_time_integration_split
 
       call mpas_timer_stop('se vmix halos')
 
+      if (config_use_debugTracers) then
+         call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupCur, 1)
+         call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupNew, 2)
+         do iTracer = 1, 3 !num_tracers
+            do iCell = 1, nCellsAll !nCellsSolve
+               do k=minLevelCell(iCell),maxLevelCell(iCell)
+                  if(abs(tracersGroupNew(iTracer, k, iCell))>1.4_RKIND) then
+                     print*, 'debug tr C', tracersGroupNew(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                  end if
+               end do
+            end do
+         end do
+      end if
+
       call mpas_timer_stop("se implicit vert mix")
 
       if ( configVertAdvMethod == vertAdvRemap ) then
@@ -2698,6 +2798,8 @@ module ocn_time_integration_split
 
       call mpas_timer_stop('se fini')
       call mpas_timer_stop("se timestep")
+
+      deallocate(thickAdjust)
 
    end subroutine ocn_time_integrator_split!}}}
 

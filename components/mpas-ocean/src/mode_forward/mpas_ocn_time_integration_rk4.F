@@ -76,7 +76,7 @@ module ocn_time_integration_rk4
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_time_integrator_rk4(domain, dt)!{{{
+   subroutine ocn_time_integrator_rk4(domain, dt, itimestep)!{{{
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Advance model state forward in time by the specified time step using
    !   4th order Runge-Kutta
@@ -91,6 +91,7 @@ module ocn_time_integration_rk4
 
       type (domain_type), intent(inout) :: domain !< Input/Output: domain information
       real (kind=RKIND), intent(in) :: dt !< Input: timestep
+      integer, intent(in) :: itimestep
 
       integer :: iCell, iEdge, k, i, err
       type (block_type), pointer :: block
@@ -524,7 +525,7 @@ module ocn_time_integration_rk4
 
         block => domain % blocklist
         do while (associated(block))
-           call ocn_time_integrator_rk4_compute_tracer_tends( block, dt, rk_substep_weights(rk_step), err )
+           call ocn_time_integrator_rk4_compute_tracer_tends( block, dt, rk_substep_weights(rk_step), itimestep, err )
            block => block % next
         end do
 
@@ -986,10 +987,11 @@ module ocn_time_integration_rk4
 
    end subroutine ocn_time_integrator_rk4_compute_thick_tends!}}}
 
-   subroutine ocn_time_integrator_rk4_compute_tracer_tends(block, dt, rkSubstepWeight, err)!{{{
+   subroutine ocn_time_integrator_rk4_compute_tracer_tends(block, dt, rkSubstepWeight, itimestep, err)!{{{
       type (block_type), intent(in) :: block
       real (kind=RKIND), intent(in) :: dt
       real (kind=RKIND), intent(in) :: rkSubstepWeight
+      integer, intent(in) :: itimestep
       integer, intent(out) :: err
 
       type (mpas_pool_type), pointer :: meshPool, verticalMeshPool
@@ -1060,15 +1062,16 @@ module ocn_time_integration_rk4
       endif
 
       call ocn_tend_tracer(tendPool, provisStatePool, forcingPool, meshPool, swForcingPool, &
-                           dt, activeTracersOnlyIn=.false., timeLevelIn=1)
+                           dt, .false., itimestep, .false., timeLevelIn=1)
 
    end subroutine ocn_time_integrator_rk4_compute_tracer_tends!}}}
 
-   subroutine ocn_time_integrator_rk4_compute_tends(domain, block, dt, rkWeight, dminfo, err)!{{{
+   subroutine ocn_time_integrator_rk4_compute_tends(domain, block, dt, rkWeight, dminfo, itimestep, err)!{{{
       type (domain_type), intent(inout) :: domain !< Input/Output: domain information
       type (block_type), intent(in) :: block
       real (kind=RKIND), intent(in) :: dt
       real (kind=RKIND), intent(in) :: rkWeight
+      integer, intent(in) :: itimestep
       integer, intent(out) :: err
 
       type (dm_info), intent(in) :: dminfo
@@ -1083,7 +1086,15 @@ module ocn_time_integration_rk4
 
       logical, pointer :: config_filter_btr_mode
 
+      logical :: firstBaroclinicStep
+      logical :: activeTracersOnlyIn
+      integer :: timeLevelIn
+
       err = 0
+
+      activeTracersOnlyIn=.false.
+      timeLevelIn=1
+      firstBaroclinicStep=.false.
 
       call mpas_pool_get_config(block % configs, 'config_filter_btr_mode', config_filter_btr_mode)
 
@@ -1139,7 +1150,7 @@ module ocn_time_integration_rk4
       endif
 
       call ocn_tend_tracer(tendPool, provisStatePool, forcingPool, meshPool, swForcingPool, &
-                           dt, activeTracersOnlyIn=.false., timeLevelIn=1)
+                           dt, activeTracersOnlyIn, itimestep, firstBaroclinicStep, timeLevelIn=1)
 
    end subroutine ocn_time_integrator_rk4_compute_tends!}}}
 

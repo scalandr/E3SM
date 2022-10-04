@@ -133,6 +133,10 @@ module ocn_diagnostics_variables
 
    real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportTop
 
+   real (kind=RKIND), dimension(:,:), pointer :: normalThicknessFluxAvg
+   real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportAvg
+   real (kind=RKIND), dimension(:,:), pointer :: layerThicknessOld
+
    real (kind=RKIND), dimension(:,:), pointer :: viscosity
    real (kind=RKIND), dimension(:,:), pointer :: vertViscTopOfEdge
    real (kind=RKIND), dimension(:,:), pointer :: vertViscTopOfCell
@@ -471,6 +475,12 @@ contains
                    vertDiffTopOfCell)
          call mpas_pool_get_array(diagnosticsPool, 'vertAleTransportTop', &
                    vertAleTransportTop)
+         call mpas_pool_get_array(diagnosticsPool, 'vertAleTransportAvg', &
+                   vertAleTransportAvg)
+         call mpas_pool_get_array(diagnosticsPool, 'layerThicknessOld', &
+                   layerThicknessOld)
+         call mpas_pool_get_array(diagnosticsPool, 'normalThicknessFluxAvg', &
+                   normalThicknessFluxAvg)
          call mpas_pool_get_array(diagnosticsPool, 'vertTransportVelocityTop', &
                    vertTransportVelocityTop)
 
@@ -728,6 +738,9 @@ contains
          !$acc                   montgomeryPotential,             &
          !$acc                   BruntVaisalaFreqTop,             &
          !$acc                   vertAleTransportTop,             &
+         !$acc                   vertAleTransportAvg,             &
+         !$acc                   layerThicknessOld,               &
+         !$acc                   normalThicknessFluxAvg,          &
          !$acc                   GMBolusVelocityZonal,            &
          !$acc                   mleVelocityZonal,                &
          !$acc                   bulkRichardsonNumber,            &
@@ -976,6 +989,9 @@ contains
          !$acc                   montgomeryPotential,             &
          !$acc                   BruntVaisalaFreqTop,             &
          !$acc                   vertAleTransportTop,             &
+         !$acc                   vertAleTransportAvg,             &
+         !$acc                   layerThicknessOld,               &
+         !$acc                   normalThicknessFluxAvg,          &
          !$acc                   GMBolusVelocityZonal,            &
          !$acc                   mleVelocityZonal,                &
          !$acc                   bulkRichardsonNumber,            &
@@ -1182,6 +1198,9 @@ contains
                  montgomeryPotential,             &
                  BruntVaisalaFreqTop,             &
                  vertAleTransportTop,             &
+                 vertAleTransportAvg,             &
+                 layerThicknessOld,               &
+                 normalThicknessFluxAvg,          &
                  GMBolusVelocityZonal,            &
                  mleVelocityZonal,                &
                  bulkRichardsonNumber,            &

@@ -190,6 +190,10 @@
 					description="Time integration method."
 					possible_values="'split_explicit', 'RK4', 'unsplit_explicit', 'split_implicit'"
 		/>
+                <nml_option name="offlinePassive" type="logical" default_value=".false." units="unitless"
+                                        description="Turns on and off the offline advancement in time of passive tracers with an ETD scheme within the split-explicit time-stepping."
+                                        possible_values=".true. or .false."
+                />
 	</nml_record>
 	<nml_record name="hmix" mode="forward">
 		<nml_option name="config_hmix_scaleWithMesh" type="logical" default_value=".false."
@@ -2697,6 +2701,18 @@
 			 description="Velocity to prevent drying of cell."
 			 packages="forwardMode"
 		/>
+                <var name="normalThicknessFluxAvg" type="real" dimensions="nVertLevels nEdges Time" units="m s^{-1}"
+                         description="used to store fluxes for offline passive tracers"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="layerThicknessOld" type="real" dimensions="nVertLevelsP1 nCells Time" units="m s^{-1}"
+                         description="used to store layerThickness at the long time-step for offline passive tracers"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="vertAleTransportAvg" type="real" dimensions="nVertLevelsP1 nCells Time" units="m s^{-1}"
+                         description="used to store averages of vertAleTransportTop for offline passive tracers"
+                         packages="forwardMode;analysisMode"
+                />
 		<var name="vertAleTransportTop" type="real" dimensions="nVertLevelsP1 nCells Time" units="m s^-1"
 			 description="vertical transport through the layer interface at the top of the cell"
 			 packages="forwardMode;analysisMode"

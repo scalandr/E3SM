@@ -55,7 +55,17 @@ module ocn_vmix
              ocn_vel_vmix_tend_implicit, &
              ocn_tracer_vmix_tend_implicit, &
              ocn_vmix_init, &
-             ocn_vmix_implicit
+             ocn_vmix_implicit, &
+             ocn_vmix_vertAdv_implicit_tracersOnly, &
+             ocn_tracer_vertAdv_tend_implicit
+
+   !--------------------------------------------------------------------
+   !
+   ! Public member functions
+   !
+   !--------------------------------------------------------------------
+
+   private :: tridiagonal_solve_mult
 
    !--------------------------------------------------------------------
    !
@@ -1064,6 +1074,143 @@ contains
 
 !***********************************************************************
 !
+!  routine ocn_tracer_vertAdv_tend_implicit
+!
+!> \brief   Computes tendencies for implicit passive tracer vertical adv
+!> \author  Sara Calandrini
+!> \date    July 2022
+!> \details
+!>  This routine computes the tendencies for implicit vertical mixing for
+!>  tracers using computed coefficients.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_tracer_vertAdv_tend_implicit(dt, w, layerThickness, tracers, &
+                  vertNonLocalFlux, tracerGroupSurfaceFlux, config_cvmix_kpp_nonlocal_with_implicit_mix, &
+                  err)!{{{
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         w !< Input: vertical transport
+
+      real (kind=RKIND), intent(in) :: &
+         dt            !< Input: time step
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         layerThickness, &             !< Input: thickness at cell center
+         tracerGroupSurfaceFlux        !< Input: surface flux for tracers nonlocal computation
+
+      real (kind=RKIND), dimension(:,:,:), intent(in) :: &
+         vertNonLocalFlux             !non local flux at interfaces
+
+      logical, intent(in) :: config_cvmix_kpp_nonlocal_with_implicit_mix
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:,:), intent(inout) :: &
+         tracers        !< Input: tracers
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: iCell, k, num_tracers, N, nCells
+
+      real (kind=RKIND), dimension(:), allocatable :: A,B,C
+      real (kind=RKIND), dimension(:,:), allocatable :: tracersTemp, rhs, th
+
+      err = 0
+
+      !if(.not.tracerVmixOn) return
+
+      num_tracers = size(tracers, dim=1)
+
+      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),tracersTemp(num_tracers,nVertLevels))
+      allocate(rhs(num_tracers,nVertLevels))
+      allocate(th(num_tracers,nVertLevels))
+
+      call mpas_timer_start('vert adv passive tracers imp loop', .false.)
+      !$omp parallel
+      !$omp do schedule(runtime) private(N, A, B, C, rhs, tracersTemp, k)
+      do iCell = 1, nCellsOwned
+         ! Compute A(k), B(k), C(k) for tracers
+         N = maxLevelCell(iCell)
+
+        ! A is lower diagonal term
+         A(1)=0.0_RKIND
+         do k = 2, N
+            A(k) = (dt*w(k,iCell)*layerThickness(k,iCell) &
+                 / (layerThickness(k-1,iCell) + layerThickness(k,iCell)))!/layerThickness(k,iCell)
+         enddo
+
+         ! C is upper diagonal term
+         do k = 1, N-1
+            C(k) = (-dt*w(k+1,iCell)*layerThickness(k,iCell) &
+                 / (layerThickness(k,iCell) + layerThickness(k+1,iCell)))!/layerThickness(k,iCell)
+         enddo
+         C(N) = 0.0_RKIND
+
+         ! B is diagonal term
+         B(1) = (layerThickness(1,iCell) + (layerThickness(2,iCell)/layerThickness(1,iCell))*C(1))!/layerThickness(1,iCell)
+         do k = 2, N-1
+            B(k) = (layerThickness(k,iCell) + (layerThickness(k-1,iCell)/layerThickness(k,iCell))*A(k) + &
+                   (layerThickness(k+1,iCell)/layerThickness(k,iCell))*C(k))!/layerThickness(k,iCell)
+         enddo
+         B(N) = (layerThickness(N,iCell) + (layerThickness(N-1,iCell)/layerThickness(N,iCell))*A(N))!/layerThickness(N,iCell)
+
+         !if ( config_cvmix_kpp_nonlocal_with_implicit_mix ) then
+         !   call ocn_compute_kpp_rhs(tracers(:,:,iCell), rhs(:,:), dt, N,
+         !   num_tracers, &
+         !                    layerThickness(:,iCell),
+         !                    vertNonLocalFlux(:,:,iCell), &
+         !                    tracerGroupSurfaceFlux(:,iCell))
+         !else
+!         rhs(:,:) = tracers(:,:,iCell)
+         do k=1, num_tracers
+            th(k,:) = tracers(k,:,iCell)*layerThickness(:,iCell)
+         end do
+         rhs(:,:) = th(:,:)
+         !endif
+
+         call tridiagonal_solve_mult(A(2:N), B, C(1:N-1), rhs(:,:), &
+              tracersTemp, N, nVertLevels, num_tracers)
+
+         tracers(:,1:N,iCell) = tracersTemp(:,1:N)
+!         do k=1, num_tracers
+!            tracers(k,1:N,iCell) = tracersTemp(k,1:N)/layerThickness(1:N,iCell)
+!         end do
+         tracers(:,N+1:nVertLevels,iCell) = -1e34
+      end do
+      !$omp end do
+      !$omp end parallel
+      call mpas_timer_stop('vert adv passive tracers imp loop')
+
+      deallocate(A, B, C, tracersTemp, rhs, th)
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_tracer_vertAdv_tend_implicit!}}}
+
+!***********************************************************************
+!
 !  routine ocn_vmix_implicit
 !
 !> \brief   Driver for implicit vertical mixing
@@ -1255,22 +1402,37 @@ contains
                endif
             endif
 
-            if ( associated(tracersGroup) ) then
-               if (trim(groupItr % memberName) == 'activeTracers') then
-                  call mpas_pool_get_array(tracersSurfaceFluxPool, 'nonLocalSurfaceTracerFlux', &
-                           tracerGroupSurfaceFlux)
-               else
-                  modifiedGroupName = trim(groupItr % memberName) // "SurfaceFlux"
-                  call mpas_pool_get_array(tracersSurfaceFluxPool, trim(modifiedGroupName), &
-                          tracerGroupSurfaceFlux)
-               endif
+            if (.not. offlinePassive) then
+               if ( associated(tracersGroup) ) then
+                  if (trim(groupItr % memberName) == 'activeTracers') then
+                     call mpas_pool_get_array(tracersSurfaceFluxPool, 'nonLocalSurfaceTracerFlux', &
+                              tracerGroupSurfaceFlux)
+                  else
+                     modifiedGroupName = trim(groupItr % memberName) // "SurfaceFlux"
+                     call mpas_pool_get_array(tracersSurfaceFluxPool, trim(modifiedGroupName), &
+                             tracerGroupSurfaceFlux)
+                  endif
 #ifdef MPAS_OPENACC
             !$acc enter data copyin(tracerGroupSurfaceFlux)
 #endif
 
-               call ocn_tracer_vmix_tend_implicit(dt, vertDiffTopOfCell, layerThickness, tracersGroup, &
-                        vertNonLocalFlux, tracerGroupSurfaceFlux,  &
-                        config_cvmix_kpp_nonlocal_with_implicit_mix, err)
+                  call ocn_tracer_vmix_tend_implicit(dt, vertDiffTopOfCell, layerThickness, tracersGroup, &
+                           vertNonLocalFlux, tracerGroupSurfaceFlux,  &
+                           config_cvmix_kpp_nonlocal_with_implicit_mix, err)
+               end if
+            else
+               if ( associated(tracersGroup) ) then
+                  if (trim(groupItr % memberName) == 'activeTracers') then
+                     call mpas_pool_get_array(tracersSurfaceFluxPool, 'nonLocalSurfaceTracerFlux', &
+                              tracerGroupSurfaceFlux)
+#ifdef MPAS_OPENACC
+            !$acc enter data copyin(tracerGroupSurfaceFlux)
+#endif
+                     call ocn_tracer_vmix_tend_implicit(dt, vertDiffTopOfCell, layerThickness, tracersGroup, &
+                              vertNonLocalFlux, tracerGroupSurfaceFlux,  &
+                              config_cvmix_kpp_nonlocal_with_implicit_mix, err)
+                  end if
+               end if
             end if
 
             ! difference tracers to compute influence of vertical mixing and divide by dt
@@ -1315,6 +1477,165 @@ contains
       call mpas_timer_stop('vmix imp')
 
    end subroutine ocn_vmix_implicit!}}}
+
+!***********************************************************************
+!
+!  routine ocn_vmix_vertAdv_implicit_tracersOnly
+!
+!> \brief   Driver for implicit vertical mixing for tracers only
+!> \author  Sara Calandrini
+!> \date    April 2022
+!> \details
+!>  This routine is a driver for handling implicit vertical mixing
+!>  of both momentum and tracers for a block. It's intended to reduce
+!>  redundant code.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_vmix_vertAdv_implicit_tracersOnly(dt, itimestep, meshPool, statePool, forcingPool, scratchPool, err, timeLevelIn)!{{{
+      real (kind=RKIND), intent(in) :: dt
+      integer, intent(in) :: itimestep
+      type (mpas_pool_type), intent(in) :: meshPool
+      type (mpas_pool_type), intent(inout) :: statePool
+      type (mpas_pool_type), intent(inout) :: forcingPool
+      type (mpas_pool_type), intent(in) :: scratchPool !< Input/Output: Scratch structure
+      integer, intent(out) :: err
+      integer, intent(in), optional :: timeLevelIn
+
+      type (mpas_pool_type), pointer :: tracersPool, tracersSurfaceFluxPool
+
+      integer :: iCell, timeLevel, k, cell1, cell2, iEdge, nCells, nEdges
+      real (kind=RKIND), dimension(:), pointer :: bottomDrag, ssh !needed for depth-variable computation
+      real (kind=RKIND), dimension(:,:), pointer :: normalVelocity, layerThickness
+      real (kind=RKIND), dimension(:,:), pointer :: nonLocalSurfaceTracerFlux, tracerGroupSurfaceFlux
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracersGroup
+      real (kind=RKIND), dimension(:,:,:), allocatable :: nonLocalFluxTend
+
+      type (mpas_pool_iterator_type) :: groupItr
+
+      character (len=StrKIND) :: modifiedGroupName
+      integer, pointer :: indexTempFlux, indexSaltFlux
+      err = 0
+
+      call mpas_timer_start('vmix and vert adv tracer imp')
+
+      call mpas_pool_get_subpool(statePool, 'tracers', tracersPool)
+
+      if (present(timeLevelIn)) then
+         timeLevel = timeLevelIn
+      else
+         timeLevel = 1
+      end if
+
+      call mpas_pool_get_subpool(forcingPool, 'tracersSurfaceFlux', tracersSurfaceFluxPool)
+      call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, timeLevel)
+      call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, timeLevel)
+      call mpas_pool_get_array(statePool, 'ssh', ssh, timeLevel)
+
+      call mpas_pool_get_array(forcingPool, 'bottomDrag', bottomDrag)
+
+      call mpas_timer_start('vmix coefs', .false.)
+      call ocn_vmix_coefs(meshPool, statePool, forcingPool, scratchPool, err, timeLevel)
+      call mpas_timer_stop('vmix coefs')
+
+!      do iCell = 1, nCellsOwned
+!         vertDiffTopOfCellAvg(:,iCell) = 0.5_RKIND*(vertDiffTopOfCellAvg(:,iCell) + &
+!            vertDiffTopOfCell(:,iCell))
+!      end do
+
+      !
+      !  Implicit vertical solve for passive tracers
+      !
+
+      call mpas_pool_begin_iteration(tracersPool)
+      do while ( mpas_pool_get_next_member(tracersPool, groupItr) )
+
+         if ( groupItr % memberType == MPAS_POOL_FIELD ) then
+            call mpas_pool_get_array(tracersPool, groupItr % memberName, tracersGroup, timeLevel)
+
+            if ( associated(tracersGroup) ) then
+
+               if (trim(groupItr % memberName)=='ecosysTracers' .or. trim(groupItr % memberName)=='DMSTracers' .or. &
+                  trim(groupItr % memberName)=='MacroMoleculesTracers' .or. &
+                  trim(groupItr % memberName)=='debugTracers') then
+
+                  modifiedGroupName = trim(groupItr % memberName) // "SurfaceFlux"
+                  call mpas_pool_get_array(tracersSurfaceFluxPool, trim(modifiedGroupName), &
+                          tracerGroupSurfaceFlux)
+
+                  call mpas_timer_start('vert adv solve tracers', .false.)
+                  call ocn_tracer_vertAdv_tend_implicit(dt, vertAleTransportAvg, layerThickness, tracersGroup, &
+                             vertNonLocalFlux, tracerGroupSurfaceFlux, config_cvmix_kpp_nonlocal_with_implicit_mix, err)
+                  call mpas_timer_stop('vert adv solve tracers')
+
+!                  call mpas_timer_start('vmix solve tracers', .false.)
+!                  call ocn_tracer_vmix_tend_implicit(dt, vertDiffTopOfCell, layerThickness, tracersGroup, &
+!                        vertNonLocalFlux, tracerGroupSurfaceFlux,  &
+!                        config_cvmix_kpp_nonlocal_with_implicit_mix, err)
+!                  call mpas_timer_stop('vmix solve tracers')
+
+               end if
+            end if
+
+         end if
+      end do
+
+      call mpas_timer_stop('vmix and vert adv tracer imp')
+
+   end subroutine ocn_vmix_vertAdv_implicit_tracersOnly!}}}
+
+!***********************************************************************
+!
+!  routine tridiagonal_solve_mult
+!
+!> \brief   Solve multiple matrix equations Ax=r for x, where A is tridiagonal.
+!> \author  Mark Petersen
+!> \date    September 2011
+!> \details
+!>  Solve the matrix equation Ax=r for x, where A is tridiagonal.
+!>  A is an nxn matrix, with:
+!>  a sub-diagonal, filled from 1:n-1 (a(1) appears on row 2)
+!>  b diagonal, filled from 1:n
+!>  c sup-diagonal, filled from 1:n-1  (c(1) apears on row 1)
+!
+!-----------------------------------------------------------------------
+subroutine tridiagonal_solve_mult(a,b,c,r,x,n,nDim,nSystems)!{{{
+
+   integer,intent(in) :: n, nDim, nSystems
+   real (KIND=RKIND), dimension(n), intent(in) :: a,b,c
+   real (KIND=RKIND), dimension(nSystems,nDim), intent(in) :: r
+   real (KIND=RKIND), dimension(nSystems,nDim), intent(out) :: x
+   real (KIND=RKIND), dimension(n) :: bTemp
+   real (KIND=RKIND), dimension(nSystems,n) :: rTemp
+   real (KIND=RKIND) :: m
+   integer i,j
+
+   ! Use work variables for b and r
+   bTemp(1) = b(1)
+   do j = 1,nSystems
+      rTemp(j,1) = r(j,1)
+   end do
+
+   ! First pass: set the coefficients
+   do i = 2,n
+      m = a(i-1)/bTemp(i-1)
+      bTemp(i) = b(i) - m*c(i-1)
+      do j = 1,nSystems
+         rTemp(j,i) = r(j,i) - m*rTemp(j,i-1)
+      end do
+   end do
+
+   do j = 1,nSystems
+      x(j,n) = rTemp(j,n)/bTemp(n)
+   end do
+   ! Second pass: back-substition
+   do i = n-1, 1, -1
+      do j = 1,nSystems
+         x(j,i) = (rTemp(j,i) - c(i)*x(j,i+1))/bTemp(i)
+      end do
+   end do
+
+end subroutine tridiagonal_solve_mult!}}}
 
 !***********************************************************************
 !

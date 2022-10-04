@@ -39,7 +39,8 @@ module ocn_tracer_advection
 
    ! public module method interfaces
    public :: ocn_tracer_advection_init,         &
-             ocn_tracer_advection_tend
+             ocn_tracer_advection_tend,         &
+             ocn_passive_tracer_advection_tend
 
    ! privat module variables
    logical :: tracerAdvOff  !< flag to turn off tracer advection
@@ -111,6 +112,56 @@ module ocn_tracer_advection
       call mpas_timer_stop("tracer adv")
 
    end subroutine ocn_tracer_advection_tend!}}}
+
+!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+!
+!  routine ocn_passive_tracer_advection_tend
+!
+!> \brief MPAS ocean tracer advection tendency
+!> \author Sara Calandrini
+!> \date   July 2022
+!> \details
+!>  This routine is the driver routine for computing tracer advection
+!>  tendencies. It simply calls submodule tendency routines based on choice of
+!>  algorithm.
+!
+!-------------------------------------------------------------------------------
+
+   subroutine ocn_passive_tracer_advection_tend(tracers, normalThicknessFlux, &
+                                        layerThickness, tend, computeBudgets)!{{{
+
+      !*** Input/Output parameters
+
+      real (kind=RKIND), dimension(:,:,:), intent(inout) :: &
+         tend            !< [in,out] Tracer tendency to which advection added
+
+      !*** Input parameters
+
+      real (kind=RKIND), dimension(:,:,:), intent(in) :: &
+         tracers             !< [in] Current tracer values
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         normalThicknessFlux !< [in] Thickness weighted horizontal velocity
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         layerThickness      !< [in] Thickness field
+      logical, intent(in) :: &
+         computeBudgets      ! flag to compute active tracer budget
+
+      ! end of preamble
+      !----------------
+      ! begin code
+
+      ! immediate return if tracer advection not selected
+      if (tracerAdvOff) return
+
+      call mpas_timer_start("passive tracer horiz adv")
+
+      call ocn_tracer_hor_adv_std_tend(tracers, normalThicknessFlux, &
+                                      layerThickness, tend)
+
+      call mpas_timer_stop("passive tracer horiz adv")
+
+   end subroutine ocn_passive_tracer_advection_tend!}}}
+
 
 !***********************************************************************
 !

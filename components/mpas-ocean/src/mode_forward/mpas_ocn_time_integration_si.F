@@ -154,7 +154,7 @@ module ocn_time_integration_si
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_time_integrator_si(domain, dt)!{{{
+   subroutine ocn_time_integrator_si(domain, dt, itimestep)!{{{
 
       !-----------------------------------------------------------------
       ! Input variables
@@ -162,6 +162,8 @@ module ocn_time_integration_si
 
       real (kind=RKIND), intent(in) :: &
          dt              !< [in] time step (sec) to move forward
+
+      integer, intent(in) :: itimestep
 
       !-----------------------------------------------------------------
       ! Input/output variables
@@ -191,6 +193,8 @@ module ocn_time_integration_si
 
       logical :: &
          activeTracersOnly   ! only compute tendencies for active tracers
+
+      logical :: firstBaroclinicStep
 
       logical, pointer :: &
          config_use_tracerGroup  ! flag for using each tracer group
@@ -1766,8 +1770,10 @@ module ocn_time_integration_si
          ! only compute tendencies for active tracers on last large iteration
          if (splitImplicitStep < numTSIterations) then
             activeTracersOnly = .true.
+            firstBaroclinicStep = .true.
          else
             activeTracersOnly = .false.
+            firstBaroclinicStep = .false.
          endif
 
          ! Thickness tendency computations and thickness halo updates
@@ -1823,8 +1829,8 @@ module ocn_time_integration_si
          call mpas_timer_start('si tracer tend', .false.)
 
          call ocn_tend_tracer(tendPool, statePool, forcingPool, &
-                              meshPool, swForcingPool, &
-                              dt, activeTracersOnly, 2)
+                              meshPool, swForcingPool, dt, &
+                              activeTracersOnly, itimestep, firstBaroclinicStep, 2)
 
          call mpas_timer_stop('si tracer tend')
 
