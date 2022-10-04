@@ -1185,12 +1185,32 @@ contains
             !$omp end parallel
          endif ! compute budgets
 
-         call ocn_tracer_hmix_tend(meshPool, layerThickEdgeMean, &
-                                   layerThickness, zMid, tracerGroup, &
-                                   RediKappa, slopeTriadUp, &
-                                   slopeTriadDown, dt, isActiveTracer, &
-                                   RediKappaScaling, rediLimiterCount, &
-                                   tracerGroupTend, err)
+         if(trim(groupItr % memberName)=='activeTracers') then
+            call ocn_tracer_hmix_tend(meshPool, layerThickEdgeMean, &
+                                      layerThickness, zMid, tracerGroup, &
+                                      RediKappa, slopeTriadUp, &
+                                      slopeTriadDown, dt, isActiveTracer, &
+                                      RediKappaScaling, rediLimiterCount, &
+                                      tracerGroupTend, err)
+         else
+            if (offlinePassive) then
+               if (mod(itimestep,2)==0) then
+                  call ocn_tracer_hmix_tend(meshPool, layerThickEdgeMean, &
+                                         layerThickness, zMid, tracerGroup, &
+                                         RediKappa, slopeTriadUp, &
+                                         slopeTriadDown, dt, isActiveTracer, &
+                                         RediKappaScaling, rediLimiterCount, &
+                                         tracerGroupTend, err)
+               end if
+            else
+               call ocn_tracer_hmix_tend(meshPool, layerThickEdgeMean, &
+                                      layerThickness, zMid, tracerGroup, &
+                                      RediKappa, slopeTriadUp, &
+                                      slopeTriadDown, dt, isActiveTracer, &
+                                      RediKappaScaling, rediLimiterCount, &
+                                      tracerGroupTend, err)
+            end if
+         end if
 
          if (computeBudgets) then
             ! Finish budget calculation by subtracting before, after
