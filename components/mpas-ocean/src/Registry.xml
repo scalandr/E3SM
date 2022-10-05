@@ -2701,6 +2701,10 @@
 			 description="Velocity to prevent drying of cell."
 			 packages="forwardMode"
 		/>
+                <var name="activeTracersAvg" type="real" dimensions="TWO nVertLevels nCells Time" units="m s^{-1}"
+                         description="used to store active tracers average for offline ecosystem tracers"
+                         packages="forwardMode;analysisMode"
+                />
                 <var name="normalThicknessFluxAvg" type="real" dimensions="nVertLevels nEdges Time" units="m s^{-1}"
                          description="used to store fluxes for offline passive tracers"
                          packages="forwardMode;analysisMode"

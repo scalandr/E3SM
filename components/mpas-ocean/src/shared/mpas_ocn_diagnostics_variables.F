@@ -136,6 +136,7 @@ module ocn_diagnostics_variables
    real (kind=RKIND), dimension(:,:), pointer :: normalThicknessFluxAvg
    real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportAvg
    real (kind=RKIND), dimension(:,:), pointer :: layerThicknessOld
+   real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersAvg
 
    real (kind=RKIND), dimension(:,:), pointer :: viscosity
    real (kind=RKIND), dimension(:,:), pointer :: vertViscTopOfEdge
@@ -481,6 +482,8 @@ contains
                    layerThicknessOld)
          call mpas_pool_get_array(diagnosticsPool, 'normalThicknessFluxAvg', &
                    normalThicknessFluxAvg)
+         call mpas_pool_get_array(diagnosticsPool, 'activeTracersAvg', &
+                   activeTracersAvg)
          call mpas_pool_get_array(diagnosticsPool, 'vertTransportVelocityTop', &
                    vertTransportVelocityTop)
 
@@ -741,6 +744,7 @@ contains
          !$acc                   vertAleTransportAvg,             &
          !$acc                   layerThicknessOld,               &
          !$acc                   normalThicknessFluxAvg,          &
+         !$acc                   activeTracersAvg,                &
          !$acc                   GMBolusVelocityZonal,            &
          !$acc                   mleVelocityZonal,                &
          !$acc                   bulkRichardsonNumber,            &
@@ -992,6 +996,7 @@ contains
          !$acc                   vertAleTransportAvg,             &
          !$acc                   layerThicknessOld,               &
          !$acc                   normalThicknessFluxAvg,          &
+         !$acc                   activeTracersAvg,                &
          !$acc                   GMBolusVelocityZonal,            &
          !$acc                   mleVelocityZonal,                &
          !$acc                   bulkRichardsonNumber,            &
@@ -1201,6 +1206,7 @@ contains
                  vertAleTransportAvg,             &
                  layerThicknessOld,               &
                  normalThicknessFluxAvg,          &
+                 activeTracersAvg,                &
                  GMBolusVelocityZonal,            &
                  mleVelocityZonal,                &
                  bulkRichardsonNumber,            &

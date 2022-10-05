@@ -661,6 +661,8 @@ contains
                                              fractionAbsorbed)
       call mpas_pool_get_array(forcingPool, 'fractionAbsorbedRunoff', &
                                              fractionAbsorbedRunoff)
+      call mpas_pool_get_array(tracersPool, 'activeTracers', &
+                                             activeTracers, timeLevel)
 
       ! allocate and transfer data not specific to tracer groups
       allocate(normalThicknessFlux(nVertLevels, nEdgesAll+1))
@@ -668,6 +670,11 @@ contains
       if (mod(itimestep,2)==1 .and. firstBaroclinicStep) then
          do iEdge = 1, nEdgesAll
             normalThicknessFluxAvg(:, iEdge) = 0.0_RKIND
+         end do
+         do k = 1, 2
+            do iCell = 1, nCellsAll
+               activeTracersAvg(k,:,iCell) = 0.0_RKIND
+            end do
          end do
       end if
 
@@ -705,6 +712,11 @@ contains
          do iEdge = 1, nEdgesAll
             normalThicknessFluxAvg(:, iEdge) = normalThicknessFluxAvg(:, iEdge) + normalThicknessFlux(:, iEdge)
          end do
+         do iCell = 1, nCellsAll
+            do k = 1, nVertLevels
+               activeTracersAvg(:,k,iCell) = activeTracersAvg(:,k,iCell) + activeTracers(:,k,iCell)
+            end do
+         end do
 #ifndef MPAS_OPENACC
          !$omp end do
          !$omp end parallel
@@ -717,6 +729,11 @@ contains
          do iEdge = 1, nEdgesAll
             do k = 1, nVertLevels
               normalThicknessFluxAvg(k, iEdge) = 0.5_RKIND*normalThicknessFluxAvg(k, iEdge)
+            end do
+         end do
+         do iCell = 1, nCellsAll
+            do k = 1, nVertLevels
+               activeTracersAvg(:,k,iCell) = 0.5_RKIND*activeTracersAvg(:,k,iCell)
             end do
          end do
 #ifndef MPAS_OPENACC
@@ -871,21 +888,56 @@ contains
 
             call mpas_pool_get_array(tracersPool, 'activeTracers', &
                                      activeTracers, timeLevel)
-            call ocn_tracer_ecosys_compute(activeTracers, tracerGroup, &
-                                           forcingPool, nTracersGroup, &
-                                           nCellsOwned, latCell, minLevelCell, &
-                                           maxLevelCell, nVertLevels, &
-                                           layerThickness, zMid, &
-                                           indxTemp, indxSalt, &
-                                           tracerGroupTend, err)
 
-            call ocn_tracer_ecosys_surface_flux_compute(activeTracers, &
-                                           tracerGroup, forcingPool,  &
-                                           nTracersGroup, nCellsOwned, &
-                                           zMid, minLevelCell, indxTemp, &
-                                           indxSalt, tracerGroupSurfaceFlux, &
-                                           err)
-                                           
+!            call ocn_tracer_ecosys_compute(activeTracers, tracerGroup, &
+!                                           forcingPool, nTracersGroup, &
+!                                           nCellsOwned, latCell, minLevelCell, &
+!                                           maxLevelCell, nVertLevels, &
+!                                           layerThickness, zMid, &
+!                                           indxTemp, indxSalt, &
+!                                           tracerGroupTend, err)
+!
+!            call ocn_tracer_ecosys_surface_flux_compute(activeTracers, &
+!                                           tracerGroup, forcingPool,  &
+!                                           nTracersGroup, nCellsOwned, &
+!                                           zMid, minLevelCell, indxTemp, &
+!                                           indxSalt, tracerGroupSurfaceFlux, &
+!                                           err)
+
+            if (offlinePassive) then
+               if (mod(itimestep,2)==0) then
+                  call ocn_tracer_ecosys_compute(activeTracersAvg, tracerGroup, &
+                                                 forcingPool, nTracersGroup, &
+                                                 nCellsOwned, latCell, minLevelCell, &
+                                                 maxLevelCell, nVertLevels, &
+                                                 layerThickness, zMid, &
+                                                 indxTemp, indxSalt, &
+                                                 tracerGroupTend, err)
+
+                  call ocn_tracer_ecosys_surface_flux_compute(activeTracersAvg, &
+                                                 tracerGroup, forcingPool,  &
+                                                 nTracersGroup, nCellsOwned, &
+                                                 zMid, minLevelCell, indxTemp, &
+                                                 indxSalt, tracerGroupSurfaceFlux, &
+                                                 err)
+               end if
+            else
+               call ocn_tracer_ecosys_compute(activeTracers, tracerGroup, &
+                                              forcingPool, nTracersGroup, &
+                                              nCellsOwned, latCell, minLevelCell, &
+                                              maxLevelCell, nVertLevels, &
+                                              layerThickness, zMid, &
+                                              indxTemp, indxSalt, &
+                                              tracerGroupTend, err)
+
+               call ocn_tracer_ecosys_surface_flux_compute(activeTracers, &
+                                              tracerGroup, forcingPool,  &
+                                              nTracersGroup, nCellsOwned, &
+                                              zMid, minLevelCell, indxTemp, &
+                                              indxSalt, tracerGroupSurfaceFlux, &
+                                              err)
+            end if
+
          endif ! ecosys tracers
 
          !
@@ -999,8 +1051,22 @@ contains
          ! tracer fluxes at the land-ice / ocean interface
          ! this is a flux at the top ocean surface -- so these
          ! fluxes are added into tracerGroupSurfaceFlux
-         call ocn_surface_land_ice_fluxes_tracers(meshPool, groupName, &
-                             forcingPool, tracerGroupSurfaceFlux, err)
+!         call ocn_surface_land_ice_fluxes_tracers(meshPool, groupName, &
+!                             forcingPool, tracerGroupSurfaceFlux, err)
+         if(trim(groupItr % memberName)=='activeTracers') then
+            call ocn_surface_land_ice_fluxes_tracers(meshPool, groupName, &
+                                forcingPool, tracerGroupSurfaceFlux, err)
+         else
+            if (offlinePassive) then
+               if (mod(itimestep,2)==0) then
+                  call ocn_surface_land_ice_fluxes_tracers(meshPool, groupName, &
+                                      forcingPool, tracerGroupSurfaceFlux, err)
+               end if
+            else
+               call ocn_surface_land_ice_fluxes_tracers(meshPool, groupName, &
+                                   forcingPool, tracerGroupSurfaceFlux, err)
+            end if
+         end if
 
          !
          ! other additions to tracerGroupSurfaceFlux should be added here
@@ -1250,11 +1316,34 @@ contains
             !$omp end parallel
          endif ! compute budgets
 
-         call ocn_tracer_surface_flux_tend(meshPool, fractionAbsorbed, &
-                               fractionAbsorbedRunoff, layerThickness, &
-                               tracerGroupSurfaceFlux, &
-                               tracerGroupSurfaceFluxRunoff,  &
-                               tracerGroupTend, err)
+!         call ocn_tracer_surface_flux_tend(meshPool, fractionAbsorbed, &
+!                               fractionAbsorbedRunoff, layerThickness, &
+!                               tracerGroupSurfaceFlux, &
+!                               tracerGroupSurfaceFluxRunoff,  &
+!                               tracerGroupTend, err)
+         if(trim(groupItr % memberName)=='activeTracers') then
+            call ocn_tracer_surface_flux_tend(meshPool, fractionAbsorbed, &
+                                  fractionAbsorbedRunoff, layerThickness, &
+                                  tracerGroupSurfaceFlux, &
+                                  tracerGroupSurfaceFluxRunoff,  &
+                                  tracerGroupTend, err)
+         else
+            if (offlinePassive) then
+               if (mod(itimestep,2)==0) then
+                  call ocn_tracer_surface_flux_tend(meshPool, fractionAbsorbed, &
+                                        fractionAbsorbedRunoff, layerThickness, &
+                                        tracerGroupSurfaceFlux, &
+                                        tracerGroupSurfaceFluxRunoff,  &
+                                        tracerGroupTend, err)
+               end if
+            else
+               call ocn_tracer_surface_flux_tend(meshPool, fractionAbsorbed, &
+                                     fractionAbsorbedRunoff, layerThickness, &
+                                     tracerGroupSurfaceFlux, &
+                                     tracerGroupSurfaceFluxRunoff,  &
+                                     tracerGroupTend, err)
+            end if
+         end if
 
          !
          ! Compute shortwave absorption
@@ -1333,10 +1422,23 @@ contains
                                           nonLocalSurfaceTracerFlux, &
                                           tracerGroupTend, err)
                else ! not active
-                  call ocn_tracer_nonlocalflux_tend(meshPool, &
-                                          vertNonLocalFlux, &
-                                          tracerGroupSurfaceFlux, &
-                                          tracerGroupTend, err)
+!                  call ocn_tracer_nonlocalflux_tend(meshPool, &
+!                                          vertNonLocalFlux, &
+!                                          tracerGroupSurfaceFlux, &
+!                                          tracerGroupTend, err)
+                  if (offlinePassive) then
+                     if (mod(itimestep,2)==0) then
+                        call ocn_tracer_nonlocalflux_tend(meshPool, &
+                                                vertNonLocalFlux, &
+                                                tracerGroupSurfaceFlux, &
+                                                tracerGroupTend, err)
+                     end if
+                  else
+                     call ocn_tracer_nonlocalflux_tend(meshPool, &
+                                             vertNonLocalFlux, &
+                                             tracerGroupSurfaceFlux, &
+                                             tracerGroupTend, err)
+                  end if
                endif ! active tracer
 
                if (computeBudgets) then
