@@ -1211,7 +1211,7 @@ contains
             if (offlinePassive) then
                if (mod(itimestep,2)==0) then
                   call ocn_passive_tracer_advection_tend(tracerGroup, normalThicknessFluxAvg, &
-                     layerThickness, tracerGroupTend, computeBudgets)
+                     layerThickness, tracerGroupTend, dt, computeBudgets)
                end if
             else
                call ocn_tracer_advection_tend(tracerGroup, normalThicknessFlux, vertAleTransportTop, layerThickness, &

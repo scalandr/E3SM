@@ -1058,6 +1058,10 @@
 					description="Slope limiter for the vertical remap advection scheme."
 					possible_values="'none','monotonic','weno'"
 		/>
+                <nml_option name="config_use_tracer_clipping" type="logical" default_value=".false." units="unitless"
+                                        description="If true, the clipping method CAAS is used on the tracer equation."
+                                        possible_values=".true. or .false."
+                />
 	</nml_record>
 	<nml_record name="bottom_drag" mode="forward">
 		<nml_option name="config_use_implicit_bottom_drag" type="logical" default_value=".true."

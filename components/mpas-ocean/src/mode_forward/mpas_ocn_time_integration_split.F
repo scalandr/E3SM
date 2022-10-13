@@ -38,6 +38,7 @@ module ocn_time_integration_split
    use ocn_diagnostics
    use ocn_gm
    use ocn_submesoscale_eddies
+   use ocn_tracer_clipping
 
    use ocn_equation_of_state
    use ocn_vmix
@@ -2188,12 +2189,12 @@ module ocn_time_integration_split
                         end if
                      end if
 
-                     !if (trim(groupItr % memberName) == 'debugTracers') then
-                     if (trim(groupItr % memberName) == 'ecosysTracers') then
-                        do iTracer = 1, 1 !num_tracers
+                     if (trim(groupItr % memberName) == 'debugTracers') then
+                     !if (trim(groupItr % memberName) == 'ecosysTracers') then
+                        do iTracer = 1, 3 !num_tracers
                            do iCell = 1, nCellsAll !nCellsSolve
                               do k=minLevelCell(iCell),maxLevelCell(iCell)
-                                 if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                                 if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
                                     print*, 'debug tr A', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                                  end if
                               end do
@@ -2528,14 +2529,14 @@ module ocn_time_integration_split
       !$acc exit data delete(layerThicknessNew, normalVelocityNew)
 #endif
 
-      !if (config_use_debugTracers) then
-      if (config_use_ecosysTracers) then
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
-         do iTracer = 1, 1 !num_tracers
+      if (config_use_debugTracers) then
+      !if (config_use_ecosysTracers) then
+         call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupCur, 1)
+         call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupNew, 2)
+         do iTracer = 1, 3 !num_tracers
             do iCell = 1, nCellsAll !nCellsSolve
                do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                  if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
                      print*, 'debug tr B1', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                   end if
                end do
@@ -2543,17 +2544,22 @@ module ocn_time_integration_split
          end do
       end if
 
+      ! Clipping (CAAS)
+      if (offlinePassive) then
+         call ocn_tracer_caas(statePool, tracersPool, err)
+      end if
+
       call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, &
                              scratchPool, err, 2)
 
-      !if (config_use_debugTracers) then
-      if (config_use_ecosysTracers) then
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
-         do iTracer = 1, 1 !num_tracers
+      if (config_use_debugTracers) then
+      !if (config_use_ecosysTracers) then
+         call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupCur, 1)
+         call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupNew, 2)
+         do iTracer = 1, 3 !num_tracers
             do iCell = 1, nCellsAll !nCellsSolve
                do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                  if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
                      print*, 'debug tr B2', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                   end if
                end do
@@ -2608,14 +2614,14 @@ module ocn_time_integration_split
 
       call mpas_timer_stop('se vmix halos')
 
-      !if (config_use_debugTracers) then
-      if (config_use_ecosysTracers) then
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
-         do iTracer = 1, 1 !num_tracers
+      if (config_use_debugTracers) then
+      !if (config_use_ecosysTracers) then
+         call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupCur, 1)
+         call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupNew, 2)
+         do iTracer = 1, 3 !num_tracers
             do iCell = 1, nCellsAll !nCellsSolve
                do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                  if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
                      print*, 'debug tr C', tracersGroupNew(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                   end if
                end do

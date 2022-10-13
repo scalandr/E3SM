@@ -128,7 +128,7 @@ module ocn_tracer_advection
 !-------------------------------------------------------------------------------
 
    subroutine ocn_passive_tracer_advection_tend(tracers, normalThicknessFlux, &
-                                        layerThickness, tend, computeBudgets)!{{{
+                                        layerThickness, tend, dt, computeBudgets)!{{{
 
       !*** Input/Output parameters
 
@@ -143,6 +143,8 @@ module ocn_tracer_advection
          normalThicknessFlux !< [in] Thickness weighted horizontal velocity
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          layerThickness      !< [in] Thickness field
+      real (kind=RKIND), intent(in) :: &
+         dt                    !< [in] Time step
       logical, intent(in) :: &
          computeBudgets      ! flag to compute active tracer budget
 
@@ -155,8 +157,15 @@ module ocn_tracer_advection
 
       call mpas_timer_start("passive tracer horiz adv")
 
-      call ocn_tracer_hor_adv_std_tend(tracers, normalThicknessFlux, &
-                                      layerThickness, tend)
+      ! call specific advection routine based on choice of monotonicity
+!      if (monotonicOn) then
+         call ocn_tracer_hor_adv_mono_tend(tend, tracers, layerThickness,  &
+                                             normalThicknessFlux, dt,      &
+                                             computeBudgets)
+!      else
+!         call ocn_tracer_hor_adv_std_tend(tracers, normalThicknessFlux, &
+!                                      layerThickness, tend)
+!      end if
 
       call mpas_timer_stop("passive tracer horiz adv")
 

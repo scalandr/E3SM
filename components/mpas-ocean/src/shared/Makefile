@@ -74,7 +74,8 @@ OBJS = mpas_ocn_init_routines.o \
 	   mpas_ocn_vel_forcing_topographic_wave_drag.o \
 	   mpas_ocn_transport_tests.o \
 	   mpas_ocn_vel_self_attraction_loading.o \
-	   mpas_ocn_vertical_advection.o
+	   mpas_ocn_vertical_advection.o \
+           mpas_ocn_tracer_clipping.o
 
 all: $(OBJS)
 
@@ -227,6 +228,8 @@ mpas_ocn_vel_pressure_grad.o: mpas_ocn_constants.o
 mpas_ocn_vel_tidal_potential.o: mpas_ocn_diagnostics_variables.o
 
 mpas_ocn_vertical_advection.o: mpas_ocn_config.o
+
+mpas_ocn_tracer_clipping.o: mpas_ocn_constants.o mpas_ocn_config.o mpas_ocn_diagnostics_variables.o mpas_ocn_mesh.o
 
 mpas_ocn_vertical_regrid.o: mpas_ocn_config.o mpas_ocn_constants.o mpas_ocn_mesh.o
 
