@@ -721,6 +721,11 @@ contains
          !$omp end do
          !$omp end parallel
 #endif
+!         if (mod(itimestep,2)==1) then
+!            do iCell = 1, nCellsAll
+!               vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
+!            end do
+!         end if
       end if
 
       if (mod(itimestep,2)==0 .and. (.not. firstBaroclinicStep)) then
@@ -734,6 +739,7 @@ contains
          do iCell = 1, nCellsAll
             do k = 1, nVertLevels
                activeTracersAvg(:,k,iCell) = 0.5_RKIND*activeTracersAvg(:,k,iCell)
+!               vertAleTransportAvg(k, iCell) = 0.5_RKIND*(vertAleTransportAvg(k,iCell)+vertAleTransportTop(k,iCell))
             end do
          end do
 #ifndef MPAS_OPENACC
@@ -1211,7 +1217,7 @@ contains
             if (offlinePassive) then
                if (mod(itimestep,2)==0) then
                   call ocn_passive_tracer_advection_tend(tracerGroup, normalThicknessFluxAvg, &
-                     layerThickness, tracerGroupTend, dt, computeBudgets)
+                     vertAleTransportAvg, layerThickness, tracerGroupTend, dt, computeBudgets)
                end if
             else
                call ocn_tracer_advection_tend(tracerGroup, normalThicknessFlux, vertAleTransportTop, layerThickness, &

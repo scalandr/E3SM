@@ -1568,11 +1568,11 @@ contains
                              vertNonLocalFlux, tracerGroupSurfaceFlux, config_cvmix_kpp_nonlocal_with_implicit_mix, err)
                   call mpas_timer_stop('vert adv solve tracers')
 
-!                  call mpas_timer_start('vmix solve tracers', .false.)
-!                  call ocn_tracer_vmix_tend_implicit(dt, vertDiffTopOfCell, layerThickness, tracersGroup, &
-!                        vertNonLocalFlux, tracerGroupSurfaceFlux,  &
-!                        config_cvmix_kpp_nonlocal_with_implicit_mix, err)
-!                  call mpas_timer_stop('vmix solve tracers')
+                  call mpas_timer_start('vmix solve tracers', .false.)
+                  call ocn_tracer_vmix_tend_implicit(dt, vertDiffTopOfCell, layerThickness, tracersGroup, &
+                        vertNonLocalFlux, tracerGroupSurfaceFlux,  &
+                        config_cvmix_kpp_nonlocal_with_implicit_mix, err)
+                  call mpas_timer_stop('vmix solve tracers')
 
                end if
             end if
