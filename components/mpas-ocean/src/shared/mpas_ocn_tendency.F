@@ -739,7 +739,8 @@ contains
          do iCell = 1, nCellsAll
             do k = 1, nVertLevels
                activeTracersAvg(:,k,iCell) = 0.5_RKIND*activeTracersAvg(:,k,iCell)
-!               vertAleTransportAvg(k, iCell) = 0.5_RKIND*(vertAleTransportAvg(k,iCell)+vertAleTransportTop(k,iCell))
+!               vertAleTransportAvg(k,iCell) = 0.5_RKIND*(vertAleTransportAvg(k,iCell)+vertAleTransportTop(k,iCell))
+               layerAvg(k,iCell) = layerThickness(k,iCell)
             end do
          end do
 #ifndef MPAS_OPENACC
@@ -1217,7 +1218,7 @@ contains
             if (offlinePassive) then
                if (mod(itimestep,2)==0) then
                   call ocn_passive_tracer_advection_tend(tracerGroup, normalThicknessFluxAvg, &
-                     vertAleTransportAvg, layerThickness, tracerGroupTend, dt, computeBudgets)
+                     vertAleTransportAvg, layerThickness, tracerGroupTend, 2.0_RKIND*dt, computeBudgets)
                end if
             else
                call ocn_tracer_advection_tend(tracerGroup, normalThicknessFlux, vertAleTransportTop, layerThickness, &
@@ -1270,7 +1271,7 @@ contains
                   call ocn_tracer_hmix_tend(meshPool, layerThickEdgeMean, &
                                          layerThickness, zMid, tracerGroup, &
                                          RediKappa, slopeTriadUp, &
-                                         slopeTriadDown, dt, isActiveTracer, &
+                                         slopeTriadDown, 2.0_RKIND*dt, isActiveTracer, &
                                          RediKappaScaling, rediLimiterCount, &
                                          tracerGroupTend, err)
                end if

@@ -4,7 +4,8 @@ OBJS = mpas_ocn_forward_mode.o \
        mpas_ocn_time_integration.o \
        mpas_ocn_time_integration_rk4.o \
        mpas_ocn_time_integration_si.o \
-       mpas_ocn_time_integration_split.o
+       mpas_ocn_time_integration_split.o \
+       mpas_ocn_time_integration_ETD.o
 
 all: forward_mode
 
@@ -16,7 +17,9 @@ mpas_ocn_time_integration_rk4.o:
 
 mpas_ocn_time_integration_si.o: 
 
-mpas_ocn_time_integration_split.o: 
+mpas_ocn_time_integration_ETD.o:
+
+mpas_ocn_time_integration_split.o: mpas_ocn_time_integration_ETD.o
 
 mpas_ocn_forward_mode.o: mpas_ocn_time_integration.o \
                          mpas_ocn_time_integration_rk4.o \

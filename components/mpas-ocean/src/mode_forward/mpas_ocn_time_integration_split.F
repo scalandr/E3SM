@@ -50,6 +50,8 @@ module ocn_time_integration_split
    use ocn_surface_land_ice_fluxes
    use ocn_transport_tests
 
+   use ocn_time_integration_ETD
+
    implicit none
    private
    save
@@ -2170,7 +2172,7 @@ module ocn_time_integration_split
                               !$omp do schedule(runtime) private(k)
                               do iCell = 1, nCellsAll
                                  do k = minLevelCell(iCell), maxLevelCell(iCell)
-                                    thickAdjust(k,iCell) = layerThicknessCur(k,iCell) + dt * (layerThicknessTend(k,iCell)-vertAleTransportTop(k+1,iCell)+vertAleTransportTop(k,iCell))
+                                    !thickAdjust(k,iCell) = layerThicknessCur(k,iCell) + dt * (layerThicknessTend(k,iCell)-vertAleTransportTop(k+1,iCell)+vertAleTransportTop(k,iCell))
                                     vertAleTransportAvg(k, iCell) = 0.5_RKIND*(vertAleTransportAvg(k, iCell)+vertAleTransportTop(k,iCell))
                                     tracersGroupNew(:,k,iCell) = (tracersGroupCur(:,k,iCell) * layerThicknessOld(k,iCell) + 2.0_RKIND*dt &
                                                                * tracersGroupTend(:,k,iCell) ) / layerThicknessNew(k,iCell)
@@ -2181,6 +2183,18 @@ module ocn_time_integration_split
                               end do
                               !$omp end do
                               !$omp end parallel
+
+!                              call ocn_time_integrator_ETD(2.0_RKIND*dt, vertAleTransportAvg, layerThicknessOld, layerThicknessNew, tracersGroupCur, tracersGroupNew, tracersGroupTend)
+
+!                              !$omp parallel
+!                              !$omp do schedule(runtime) private(k)
+!                              do iCell = 1, nCellsAll
+!                                 do k = minLevelCell(iCell), maxLevelCell(iCell)
+!                                    layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
+!                                 end do
+!                              end do
+!                              !$omp end do
+!                              !$omp end parallel
 
                               !tridiag solver for vertical diffusion and vertical advection
                               call ocn_vmix_vertAdv_implicit_tracersOnly(2.0_RKIND*dt, itimestep, meshPool, &
@@ -2196,6 +2210,16 @@ module ocn_time_integration_split
                               do k=minLevelCell(iCell),maxLevelCell(iCell)
                                  if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
                                     print*, 'debug tr A', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                                 end if
+                              end do
+                           end do
+                        end do
+                     elseif (trim(groupItr % memberName) == 'ecosysTracers') then
+                        do iTracer = 1, 1 !num_tracers
+                           do iCell = 1, nCellsAll !nCellsSolve
+                              do k=minLevelCell(iCell),maxLevelCell(iCell)
+                                 if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                                    print*, 'debug tr Aecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                                  end if
                               end do
                            end do
@@ -2543,6 +2567,19 @@ module ocn_time_integration_split
             end do
          end do
       end if
+      if (config_use_ecosysTracers) then
+         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
+         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
+         do iTracer = 1, 1 !num_tracers
+            do iCell = 1, nCellsAll !nCellsSolve
+               do k=minLevelCell(iCell),maxLevelCell(iCell)
+                  if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                     print*, 'debug tr B1ecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                  end if
+               end do
+            end do
+         end do
+      end if
 
       ! Clipping (CAAS)
       if (offlinePassive) then
@@ -2561,6 +2598,19 @@ module ocn_time_integration_split
                do k=minLevelCell(iCell),maxLevelCell(iCell)
                   if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
                      print*, 'debug tr B2', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                  end if
+               end do
+            end do
+         end do
+      end if
+      if (config_use_ecosysTracers) then
+         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
+         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
+         do iTracer = 1, 1 !num_tracers
+            do iCell = 1, nCellsAll !nCellsSolve
+               do k=minLevelCell(iCell),maxLevelCell(iCell)
+                  if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                     print*, 'debug tr B2ecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                   end if
                end do
             end do
@@ -2623,6 +2673,19 @@ module ocn_time_integration_split
                do k=minLevelCell(iCell),maxLevelCell(iCell)
                   if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
                      print*, 'debug tr C', tracersGroupNew(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                  end if
+               end do
+            end do
+         end do
+     end if
+     if (config_use_ecosysTracers) then
+         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
+         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
+         do iTracer = 1, 1 !num_tracers
+            do iCell = 1, nCellsAll !nCellsSolve
+               do k=minLevelCell(iCell),maxLevelCell(iCell)
+                  if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                     print*, 'debug tr Cecosys', tracersGroupNew(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                   end if
                end do
             end do

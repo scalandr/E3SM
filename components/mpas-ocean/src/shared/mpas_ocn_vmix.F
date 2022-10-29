@@ -57,7 +57,8 @@ module ocn_vmix
              ocn_vmix_init, &
              ocn_vmix_implicit, &
              ocn_vmix_vertAdv_implicit_tracersOnly, &
-             ocn_tracer_vertAdv_tend_implicit
+             ocn_tracer_vertAdv_tend_implicit, &
+             ocn_tracer_vertAdv_tend_implicit_upwind
 
    !--------------------------------------------------------------------
    !
@@ -1208,6 +1209,175 @@ contains
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_vertAdv_tend_implicit!}}}
+
+!***********************************************************************
+!
+!  routine ocn_tracer_vertAdv_tend_implicit_upwind
+!
+!> \brief   Computes tendencies for implicit passive tracer vertical adv
+!> \author  Sara Calandrini
+!> \date    October 2022
+!> \details
+!>  This routine computes the tendencies for implicit vertical mixing for
+!>  tracers using computed coefficients.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_tracer_vertAdv_tend_implicit_upwind(dt, w, layerThickness, tracers, &
+                  vertNonLocalFlux, tracerGroupSurfaceFlux, &
+                  config_cvmix_kpp_nonlocal_with_implicit_mix, err)!{{{
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         w !< Input: vertical transport
+
+      real (kind=RKIND), intent(in) :: &
+         dt            !< Input: time step
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         layerThickness, &             !< Input: thickness at cell center
+         tracerGroupSurfaceFlux        !< Input: surface flux for tracers nonlocal computation
+
+      real (kind=RKIND), dimension(:,:,:), intent(in) :: &
+         vertNonLocalFlux             !non local flux at interfaces
+
+      logical, intent(in) :: config_cvmix_kpp_nonlocal_with_implicit_mix
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:,:), intent(inout) :: &
+         tracers        !< Input: tracers
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: iCell, k, num_tracers, N, nCells
+
+      real (kind=RKIND), dimension(:), allocatable :: A,B,C
+      real (kind=RKIND), dimension(:,:), allocatable :: tracersTemp, rhs, th
+
+      err = 0
+
+      !if(.not.tracerVmixOn) return
+
+      num_tracers = size(tracers, dim=1)
+
+      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),tracersTemp(num_tracers,nVertLevels))
+      allocate(rhs(num_tracers,nVertLevels))
+      allocate(th(num_tracers,nVertLevels))
+
+      call mpas_timer_start('vert adv passive tracers imp loop', .false.)
+      !$omp parallel
+      !$omp do schedule(runtime) private(N, A, B, C, rhs, tracersTemp, k)
+      do iCell = 1, nCellsOwned
+         ! Compute A(k), B(k), C(k) for tracers
+         N = maxLevelCell(iCell)
+
+         do k = 2, N-1
+            if (w(k+1,iCell)>0.0_RKIND .and. w(k,iCell)>0.0_RKIND) then
+               A(k) = dt*w(k,iCell)*layerThickness(k,iCell)/(layerThickness(k-1,iCell) + layerThickness(k,iCell))
+               B(k) = layerThickness(k,iCell) - &
+                  dt*w(k+1,iCell)*layerThickness(k+1,iCell)/(layerThickness(k+1,iCell) + layerThickness(k,iCell))
+               C(k) = 0.0_RKIND
+            elseif (w(k+1,iCell)>0.0_RKIND .and. w(k,iCell)<0.0_RKIND) then
+               !print*, 'segno diverso 1'
+               !print*, w(k+1,iCell), w(k,iCell), iCell
+               A(k) = 0.0_RKIND
+               B(k) = layerThickness(k,iCell) - &
+                  dt*w(k+1,iCell)*layerThickness(k+1,iCell)/(layerThickness(k+1,iCell) + layerThickness(k,iCell)) + &
+                  dt*w(k,iCell)*layerThickness(k-1,iCell)/(layerThickness(k-1,iCell) + layerThickness(k,iCell))
+               C(k) = 0.0_RKIND
+            elseif (w(k+1,iCell)<0.0_RKIND .and. w(k,iCell)>0.0_RKIND) then
+               !print*, 'segno diverso 2'
+               A(k) = dt*w(k,iCell)*layerThickness(k,iCell)/(layerThickness(k-1,iCell) + layerThickness(k,iCell))
+               B(k) = layerThickness(k,iCell)
+               C(k) = -dt*w(k+1,iCell)*layerThickness(k,iCell)/(layerThickness(k+1,iCell) + layerThickness(k,iCell))
+            else if (w(k+1,iCell)<0.0_RKIND .and. w(k,iCell)<0.0_RKIND) then
+               A(k) = 0.0_RKIND
+               B(k) = layerThickness(k,iCell) + &
+                  dt*w(k,iCell)*layerThickness(k-1,iCell)/(layerThickness(k-1,iCell) + layerThickness(k,iCell))
+               C(k) = -dt*w(k+1,iCell)*layerThickness(k,iCell)/(layerThickness(k+1,iCell) + layerThickness(k,iCell))
+            end if
+         end do
+
+!         do k = 2, N-1
+!            if (w(k+1,iCell)>0.0_RKIND .and. w(k,iCell)>0.0_RKIND) then
+!               A(k) = dt*w(k,iCell)*layerThickness(k-1,iCell) 
+!               B(k) = layerThickness(k,iCell) - dt*w(k+1,iCell)*layerThickness(k,iCell) + &
+!                  dt*w(k,iCell)*layerThickness(k-1,iCell)
+!               C(k) = -dt*w(k+1,iCell)*layerThickness(k,iCell)
+!            elseif (w(k+1,iCell)>0.0_RKIND .and. w(k,iCell)<0.0_RKIND) then
+!               A(k) = dt*w(k,iCell)*layerThickness(k,iCell)
+!               B(k) = layerThickness(k,iCell) - dt*w(k+1,iCell)*layerThickness(k,iCell) + &
+!                  dt*w(k,iCell)*layerThickness(k,iCell)
+!               C(k) = -dt*w(k+1,iCell)*layerThickness(k,iCell)
+!            elseif (w(k+1,iCell)<0.0_RKIND .and. w(k,iCell)>0.0_RKIND) then
+!               A(k) = dt*w(k,iCell)*layerThickness(k-1,iCell)
+!               B(k) = layerThickness(k,iCell) - dt*w(k+1,iCell)*layerThickness(k+1,iCell) + &
+!                  dt*w(k,iCell)*layerThickness(k-1,iCell)
+!               C(k) = -dt*w(k+1,iCell)*layerThickness(k+1,iCell) 
+!            else if (w(k+1,iCell)<0.0_RKIND .and. w(k,iCell)<0.0_RKIND) then
+!               A(k) = dt*w(k,iCell)*layerThickness(k,iCell)
+!               B(k) = layerThickness(k,iCell) - dt*w(k+1,iCell)*layerThickness(k+1,iCell) + &
+!                  dt*w(k,iCell)*layerThickness(k,iCell)
+!               C(k) = -dt*w(k+1,iCell)*layerThickness(k+1,iCell)
+!            end if
+!         end do
+
+         A(1) = 0.0_RKIND
+         A(N) = 0.0_RKIND
+!         if (w(N,iCell)>0.0_RKIND) then
+!            A(N) = dt*w(N,iCell)*layerThickness(N-1,iCell)
+!         else
+!            A(N) = dt*w(N,iCell)*layerThickness(N,iCell)
+!         end if
+!         if (w(2,iCell)>0.0_RKIND) then
+!            C(1) = -dt*w(2,iCell)*layerThickness(1,iCell)
+!         else
+!            C(1) = -dt*w(2,iCell)*layerThickness(2,iCell)
+!         end if
+         C(1) = 0.0_RKIND
+         C(N) = 0.0_RKIND
+         B(1) = layerThickness(1,iCell)
+         B(N) = layerThickness(N,iCell)
+
+         do k=1, num_tracers
+            th(k,:) = tracers(k,:,iCell)*layerThickness(:,iCell)
+         end do
+         rhs(:,:) = th(:,:)
+
+         call tridiagonal_solve_mult(A(2:N), B, C(1:N-1), rhs(:,:), &
+              tracersTemp, N, nVertLevels, num_tracers)
+
+         tracers(:,1:N,iCell) = tracersTemp(:,1:N)
+         tracers(:,N+1:nVertLevels,iCell) = -1e34
+      end do
+      !$omp end do
+      !$omp end parallel
+      call mpas_timer_stop('vert adv passive tracers imp loop')
+
+      deallocate(A, B, C, tracersTemp, rhs, th)
+
+   end subroutine ocn_tracer_vertAdv_tend_implicit_upwind!}}}
 
 !***********************************************************************
 !
