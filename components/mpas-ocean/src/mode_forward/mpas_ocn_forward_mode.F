@@ -70,6 +70,7 @@ module ocn_forward_mode
    use ocn_tracer_nonlocalflux
    use ocn_tracer_advection
    use ocn_tracer_ecosys
+   use ocn_tracer_debug
    use ocn_tracer_DMS
    use ocn_tracer_MacroMolecules
    use ocn_tracer_ideal_age
@@ -449,6 +450,8 @@ module ocn_forward_mode
       call ocn_tracer_nonlocalflux_init(err_tmp)
       ierr = ior(ierr,err_tmp)
       call ocn_tracer_ecosys_init(domain, err_tmp)
+      ierr = ior(ierr,err_tmp)
+      call ocn_tracer_debug_init(domain, err_tmp)
       ierr = ior(ierr,err_tmp)
       call ocn_tracer_DMS_init(domain, err_tmp)
       ierr = ior(ierr,err_tmp)

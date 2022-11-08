@@ -51,6 +51,7 @@ OBJS = mpas_ocn_init_routines.o \
 	   mpas_ocn_tracer_ideal_age.o \
 	   mpas_ocn_tracer_TTD.o \
 	   mpas_ocn_tracer_ecosys.o \
+           mpas_ocn_tracer_debug.o \
 	   mpas_ocn_tracer_DMS.o \
 	   mpas_ocn_tracer_MacroMolecules.o \
 	   mpas_ocn_tracer_CFC.o \
@@ -202,6 +203,8 @@ mpas_ocn_tracer_ideal_age.o: mpas_ocn_constants.o mpas_ocn_config.o
 mpas_ocn_tracer_TTD.o: mpas_ocn_constants.o mpas_ocn_config.o
 
 mpas_ocn_tracer_ecosys.o: mpas_ocn_constants.o mpas_ocn_config.o mpas_ocn_framework_forcing.o mpas_ocn_diagnostics_variables.o
+
+mpas_ocn_tracer_debug.o: mpas_ocn_constants.o mpas_ocn_config.o mpas_ocn_mesh.o mpas_ocn_diagnostics_variables.o
 
 mpas_ocn_tracer_DMS.o: mpas_ocn_constants.o mpas_ocn_config.o
 
