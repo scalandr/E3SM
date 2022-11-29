@@ -135,8 +135,10 @@ module ocn_diagnostics_variables
 
    real (kind=RKIND), dimension(:,:), pointer :: normalThicknessFluxAvg
    real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportAvg
+   real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportOld
    real (kind=RKIND), dimension(:,:), pointer :: layerThicknessOld
-   real (kind=RKIND), dimension(:,:), pointer :: layerAvg
+   real (kind=RKIND), dimension(:,:), pointer :: layerAvg1
+   real (kind=RKIND), dimension(:,:), pointer :: layerAvg2
    real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersAvg
 
    real (kind=RKIND), dimension(:,:), pointer :: viscosity
@@ -479,10 +481,14 @@ contains
                    vertAleTransportTop)
          call mpas_pool_get_array(diagnosticsPool, 'vertAleTransportAvg', &
                    vertAleTransportAvg)
+         call mpas_pool_get_array(diagnosticsPool, 'vertAleTransportOld', &
+                   vertAleTransportOld)
          call mpas_pool_get_array(diagnosticsPool, 'layerThicknessOld', &
                    layerThicknessOld)
-         call mpas_pool_get_array(diagnosticsPool, 'layerAvg', &
-                   layerAvg)
+         call mpas_pool_get_array(diagnosticsPool, 'layerAvg1', &
+                   layerAvg1)
+         call mpas_pool_get_array(diagnosticsPool, 'layerAvg2', &
+                   layerAvg2)
          call mpas_pool_get_array(diagnosticsPool, 'normalThicknessFluxAvg', &
                    normalThicknessFluxAvg)
          call mpas_pool_get_array(diagnosticsPool, 'activeTracersAvg', &
@@ -745,8 +751,10 @@ contains
          !$acc                   BruntVaisalaFreqTop,             &
          !$acc                   vertAleTransportTop,             &
          !$acc                   vertAleTransportAvg,             &
+         !$acc                   vertAleTransportOld,             &
          !$acc                   layerThicknessOld,               &
-         !$acc                   layerAvg,                        &
+         !$acc                   layerAvg1,                       &
+         !$acc                   layerAvg2,                       &
          !$acc                   normalThicknessFluxAvg,          &
          !$acc                   activeTracersAvg,                &
          !$acc                   GMBolusVelocityZonal,            &
@@ -998,8 +1006,10 @@ contains
          !$acc                   BruntVaisalaFreqTop,             &
          !$acc                   vertAleTransportTop,             &
          !$acc                   vertAleTransportAvg,             &
+         !$acc                   vertAleTransportOld,             &
          !$acc                   layerThicknessOld,               &
-         !$acc                   layerAvg,                        &
+         !$acc                   layerAvg1,                       &
+         !$acc                   layerAvg2,                       &
          !$acc                   normalThicknessFluxAvg,          &
          !$acc                   activeTracersAvg,                &
          !$acc                   GMBolusVelocityZonal,            &
@@ -1209,8 +1219,10 @@ contains
                  BruntVaisalaFreqTop,             &
                  vertAleTransportTop,             &
                  vertAleTransportAvg,             &
+                 vertAleTransportOld,             &
                  layerThicknessOld,               &
-                 layerAvg,                        &
+                 layerAvg1,                       &
+                 layerAvg2,                       &
                  normalThicknessFluxAvg,          &
                  activeTracersAvg,                &
                  GMBolusVelocityZonal,            &

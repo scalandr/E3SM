@@ -40,6 +40,7 @@ module ocn_tracer_advection_std
    ! public method interfaces
    public :: ocn_tracer_advection_std_tend, &
              ocn_tracer_hor_adv_std_tend, &
+             ocn_tracer_vert_adv_std_tend, &
              ocn_tracer_advection_std_init
 
 !***********************************************************************
@@ -486,6 +487,140 @@ module ocn_tracer_advection_std
       deallocate(tracerCur, highOrderFlxHorz, highOrderFlxVert)
 
    end subroutine ocn_tracer_hor_adv_std_tend!}}}
+
+!***********************************************************************
+!
+!  routine ocn_tracer_vert_adv_std_tend
+!
+!> \brief MPAS standard tracer advection tendency
+!> \author Sara Calandrini
+!> \date   11/21/2022
+!> \details
+!>  This routine computes the standard tracer advection tendencity.
+!>  Both horizontal and vertical.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_tracer_vert_adv_std_tend(tracers, w, layerThickness, dt, &
+                                          tend, iCell)
+
+      !-----------------------------------------------------------------
+      ! Input/Output variables
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:,:), intent(inout) :: &
+         tend            !< [inout] Accumulated tracer tendency
+
+      !-----------------------------------------------------------------
+      ! Input variables
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:,:), intent(in) :: &
+         tracers               !< [in] current tracer values
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         w,                   &!< [in] Vertical velocity
+         layerThickness        !< [in] Thickness
+
+      real (kind=RKIND), intent(in) :: &
+         dt                    !< [in] Timestep
+
+      integer, intent(in) :: &
+         iCell
+
+      !-----------------------------------------------------------------
+      ! Local variables
+      !-----------------------------------------------------------------
+
+      integer :: &
+         i, k,         &! loop indices for neighbors, vertical
+         kmin, kmax,   &! min, max active vertical layers
+         iEdge, &! loop indices for cells, edges
+         iTracer,      &! tracer index
+         cell1, cell2, &! neighbor cell indices across edge
+         numTracers
+
+      real (kind=RKIND) :: &
+         tracerWgt,        &! local temporary
+         invAreaCell1,     &! inverse cell area
+         vertDivFactor      ! vertical divergence factor
+
+      real (kind=RKIND), dimension(:,:), allocatable :: &
+         tracerCur,        &! reordered tracer at current time
+         highOrderFlxVert   ! high-order flux in vertical
+
+      real (kind=RKIND), parameter :: &
+         eps = 1.e-10_RKIND  ! small value to avoid div by zero
+
+      ! End preamble
+      !-----------------------------------------------------------------
+      ! Begin code
+
+      ! Get dimensions
+      numTracers = size(tracers,dim=1)
+
+      ! Allocate some arrays
+      allocate(tracerCur       (nVertLevels  , nCellsAll), &
+               highOrderFlxVert(nVertLevels+1, nCellsAll))
+
+      !$acc enter data &
+      !$acc    create(tracerCur, highOrderFlxHorz, highOrderFlxVert)
+
+      ! Loop over tracers. One tracer is advected at a time. It is
+      ! copied into a temporary array in order to improve locality
+      do iTracer = 1, numTracers
+
+        ! Initialize variables for use in this iTracer iteration
+#ifdef MPAS_OPENACC
+        !$acc parallel loop collapse(2) &
+        !$acc    present(tracerCur, tracers)
+#else
+        !$omp parallel
+        !$omp do schedule(runtime) private(k)
+#endif
+        do k=1,nVertLevels
+           tracerCur(k,iCell) = tracers(iTracer,k,iCell)
+        end do
+#ifndef MPAS_OPENACC
+        !$omp end do
+#endif
+
+        ! Compute the high order vertical flux.
+
+        call ocn_tracer_advection_vert_flx_offline(tracerCur, w, &
+                           layerThickness, highOrderFlxVert, iCell)
+
+        ! Accumulate the scaled high order vertical tendencies.
+        vertDivFactor = 1.0_RKIND
+
+#ifdef MPAS_OPENACC
+        !$acc parallel loop &
+        !$acc    present(minLevelCell, maxLevelCell, tend, &
+        !$acc            highOrderFlxVert) &
+        !$acc    private(k, kmin, kmax)
+#else
+        !$omp do schedule(runtime) private(k, kmin, kmax)
+#endif
+        kmin = minLevelCell(iCell)
+        kmax = maxLevelCell(iCell)
+
+        do k = kmin,kmax
+           tend(iTracer, k, iCell) = tend(iTracer, k, iCell) + &
+                      vertDivFactor*(highOrderFlxVert(k+1, iCell) &
+                                   - highOrderFlxVert(k, iCell))
+        end do ! k loop
+#ifndef MPAS_OPENACC
+        !$omp end do
+        !$omp end parallel
+#endif
+      end do ! iTracer loop
+
+      !$acc exit data &
+      !$acc    delete(tracerCur, highOrderFlxVert)
+
+      deallocate(tracerCur, highOrderFlxVert)
+
+   end subroutine ocn_tracer_vert_adv_std_tend!}}}
 
 !***********************************************************************
 !

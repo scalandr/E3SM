@@ -2717,8 +2717,16 @@
                          description="used to store layerThickness at the long time-step for offline passive tracers"
                          packages="forwardMode;analysisMode"
                 />
-                <var name="layerAvg" type="real" dimensions="nVertLevels nCells Time" units="m s^{-1}"
+                <var name="layerAvg1" type="real" dimensions="nVertLevels nCells Time" units="m s^{-1}"
                          description="used to store layerThickness at the long time-step for offline passive tracers"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="layerAvg2" type="real" dimensions="nVertLevels nCells Time" units="m s^{-1}"
+                         description="used to store layerThickness at the long time-step for offline passive tracers"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="vertAleTransportOld" type="real" dimensions="nVertLevelsP1 nCells Time" units="m s^{-1}"
+                         description="used to store averages of vertAleTransportTop for offline passive tracers"
                          packages="forwardMode;analysisMode"
                 />
                 <var name="vertAleTransportAvg" type="real" dimensions="nVertLevelsP1 nCells Time" units="m s^{-1}"

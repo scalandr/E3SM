@@ -38,6 +38,7 @@ module ocn_time_integration_split
    use ocn_diagnostics
    use ocn_gm
    use ocn_submesoscale_eddies
+   use ocn_tracer_advection_std
    use ocn_tracer_clipping
 
    use ocn_equation_of_state
@@ -277,7 +278,10 @@ module ocn_time_integration_split
       real (kind=RKIND), dimension(:,:), pointer :: &
          layerThicknessLagNew
 
-      real (kind=RKIND), dimension(:,:), allocatable :: thickAdjust
+      !Vertical Mesh Pool
+      real (kind=RKIND), dimension(:,:), pointer :: restingThickness
+
+      real (kind=RKIND), dimension(:,:), allocatable :: thickAdjust, CFLz
 
       ! These are public variables used from the diagnostics module
       ! indexSurfaceVelocityZonal, indexSurfaceVelocityMeridional
@@ -372,6 +376,10 @@ module ocn_time_integration_split
       call mpas_pool_get_dimension_scalar(tracersPool, 'index_salinity', &
                                                         indexSalinity)
 
+      !*** Vertical Mesh Pool
+      call mpas_pool_get_array(verticalMeshPool, 'restingThickness', &
+                                                  restingThickness)
+
       !*** Retrieve tendency variables
 
       call mpas_pool_get_array(tendPool, 'highFreqThickness', &
@@ -399,6 +407,7 @@ module ocn_time_integration_split
       endif
 
       allocate(thickAdjust(nVertLevels, nCellsAll))
+      allocate(CFLz(nVertLevels, nCellsOwned))
 
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(normalVelocityCur, normalBarotropicVelocityCur, &
@@ -2177,7 +2186,7 @@ module ocn_time_integration_split
                                     tracersGroupNew(:,k,iCell) = (tracersGroupCur(:,k,iCell) * layerThicknessOld(k,iCell) + 2.0_RKIND*dt &
                                                                * tracersGroupTend(:,k,iCell) ) / layerThicknessNew(k,iCell)
                                                                !* tracersGroupTend(:,k,iCell)) / thickAdjust(k,iCell)
-                                    layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
+                                    !layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
                                  end do
                                  vertAleTransportAvg(maxLevelCell(iCell)+1, iCell) = 0.5_RKIND*(vertAleTransportAvg(maxLevelCell(iCell)+1, iCell)+vertAleTransportTop(maxLevelCell(iCell)+1,iCell))
                               end do
@@ -2186,15 +2195,37 @@ module ocn_time_integration_split
 
 !                              call ocn_time_integrator_ETD(2.0_RKIND*dt, vertAleTransportAvg, layerThicknessOld, layerThicknessNew, tracersGroupCur, tracersGroupNew, tracersGroupTend)
 
-!                              !$omp parallel
-!                              !$omp do schedule(runtime) private(k)
-!                              do iCell = 1, nCellsAll
-!                                 do k = minLevelCell(iCell), maxLevelCell(iCell)
-!                                    layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
-!                                 end do
-!                              end do
-!                              !$omp end do
-!                              !$omp end parallel
+                              !$omp parallel
+                              !$omp do schedule(runtime) private(k)
+                              do iCell = 1, nCellsOwned
+                                 do k = minLevelCell(iCell), maxLevelCell(iCell)
+                                    CFLz(k,iCell) = vertAleTransportTop(k,iCell)*(2.0_RKIND*dt)/restingThickness(k,iCell)
+                                 end do
+                                 if (maxval(CFLz(1:maxLevelCell(iCell),iCell))<1.0_RKIND) then
+                                 !if (iCell<4000) then
+                                    !Compute vertical adv tendency
+                                    do k = minLevelCell(iCell), maxLevelCell(iCell)
+                                       tracersGroupTend(:,k,iCell) = 0.0_RKIND
+                                    end do
+                                    call ocn_tracer_vert_adv_std_tend(tracersGroupCur, vertAleTransportAvg, layerThicknessOld, &
+                                       2.0_RKIND*dt, tracersGroupTend, iCell)
+                                    !Forward Euler step
+                                    do k = minLevelCell(iCell), maxLevelCell(iCell)
+                                       tracersGroupNew(:,k,iCell) = tracersGroupNew(:,k,iCell) + (2.0_RKIND*dt &
+                                                                  * tracersGroupTend(:,k,iCell)) / layerThicknessNew(k,iCell)
+                                       layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
+                                    end do
+                                 else
+                                    !print*, iCell
+                                    call ocn_tracer_vertAdv_tend_implicit_column(2.0_RKIND*dt, vertAleTransportAvg, &
+                                       layerThicknessNew, tracersGroupNew, iCell, err)
+                                 end if
+                              end do
+                              !$omp end do
+                              !$omp end parallel
+
+                              !! Halo update on all tracer groups
+                              !call mpas_dmpar_field_halo_exch(domain, 'debugTracers', timeLevel=2)
 
                               !tridiag solver for vertical diffusion and vertical advection
                               call ocn_vmix_vertAdv_implicit_tracersOnly(2.0_RKIND*dt, itimestep, meshPool, &
@@ -2902,7 +2933,7 @@ module ocn_time_integration_split
       call mpas_timer_stop('se fini')
       call mpas_timer_stop("se timestep")
 
-      deallocate(thickAdjust)
+      deallocate(thickAdjust, CFLz)
 
    end subroutine ocn_time_integrator_split!}}}
 

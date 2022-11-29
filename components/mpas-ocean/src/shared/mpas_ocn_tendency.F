@@ -724,6 +724,8 @@ contains
 !         if (mod(itimestep,2)==1) then
 !            do iCell = 1, nCellsAll
 !               vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
+!               vertAleTransportOld(:,iCell) = vertAleTransportTop(:,iCell)
+!               layerAvg1(:,iCell) = layerThickness(:,iCell)
 !            end do
 !         end if
       end if
@@ -740,7 +742,7 @@ contains
             do k = 1, nVertLevels
                activeTracersAvg(:,k,iCell) = 0.5_RKIND*activeTracersAvg(:,k,iCell)
 !               vertAleTransportAvg(k,iCell) = 0.5_RKIND*(vertAleTransportAvg(k,iCell)+vertAleTransportTop(k,iCell))
-               layerAvg(k,iCell) = layerThickness(k,iCell)
+!               layerAvg2(k,iCell) = layerThickness(k,iCell)
             end do
          end do
 #ifndef MPAS_OPENACC

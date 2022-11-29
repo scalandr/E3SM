@@ -268,7 +268,7 @@ module ocn_time_integration_ETD
       call mpas_timer_start('building jacobian and phi function for all the elements')
       do iCell = 1, nCellsOwned
          call mpas_timer_start('jacobian for each element')
-         call jacobianVert(JacZ, layerAvg, vertAleTransportAvg, iCell)
+         call jacobianVert(JacZ, layerAvg2, vertAleTransportTop, layerAvg1, vertAleTransportOld, iCell)
          call mpas_timer_stop('jacobian for each element')
          Nlayers = maxLevelCell(iCell)
          call mpas_timer_start('phi function for each element')
@@ -486,47 +486,66 @@ module ocn_time_integration_ETD
 
    end subroutine ocn_tracer_vert_advection_std!}}}
 
-   subroutine jacobianVert(JacZ, layerThickness, w, iCell)
+   subroutine jacobianVert(JacZ, layerThickness, w, layerOld, wOld, iCell)
 
       real (kind=RKIND), dimension(:), intent(out) :: &
          JacZ            ! Jacobian at each point stored as vector
 
       real (kind=RKIND), dimension(:,:), intent(in) :: layerThickness    !< Input: thickness at cell center
       real (kind=RKIND), dimension(:,:), intent(in) :: w                 !< Input: Vertical velocity 
+      real (kind=RKIND), dimension(:,:), intent(in) :: layerOld
+      real (kind=RKIND), dimension(:,:), intent(in) :: wOld
       integer, intent(in) :: iCell
 
-      real (kind=RKIND), dimension(:,:), allocatable :: JacVertAdv
+      real (kind=RKIND), dimension(:,:), allocatable :: JacVertAdv, JacVertAdv1, JacVertAdv2
       integer :: i, j, k, N
 
       N = maxLevelCell(iCell)
       allocate(JacVertAdv(N,N))
+      allocate(JacVertAdv1(N,N))
+      allocate(JacVertAdv2(N,N))
 
       JacZ(:) = 0.0_RKIND
       JacVertAdv(:,:) = 0.0_RKIND
+      JacVertAdv1(:,:) = 0.0_RKIND
+      JacVertAdv2(:,:) = 0.0_RKIND
 
       select case (vertOrder)
       case (vertOrder2)
 
-         JacVertAdv(1,1) = w(2,iCell) * (layerThickness(2, iCell) / (layerThickness(2, iCell) + layerThickness(1, iCell))) / layerThickness(1, iCell)
-         JacVertAdv(1,2) = w(2,iCell) * (layerThickness(1, iCell) / (layerThickness(2, iCell) + layerThickness(1, iCell))) / layerThickness(2, iCell)
+         JacVertAdv1(1,1) = w(2,iCell) * (layerThickness(2, iCell) / (layerThickness(2, iCell) + layerThickness(1, iCell))) / layerThickness(1, iCell)
+         JacVertAdv1(1,2) = w(2,iCell) * (layerThickness(1, iCell) / (layerThickness(2, iCell) + layerThickness(1, iCell))) / layerThickness(2, iCell)
 
          do k = 2, N-1
-            JacVertAdv(k,k-1) = - w(k,iCell) * (layerThickness(k, iCell) / (layerThickness(k, iCell) + layerThickness(k-1, iCell))) / layerThickness(k-1, iCell)
-            JacVertAdv(k,k) = w(k+1,iCell) * (layerThickness(k+1, iCell) / (layerThickness(k, iCell) + layerThickness(k+1, iCell))) / layerThickness(k, iCell) - &
+            JacVertAdv1(k,k-1) = - w(k,iCell) * (layerThickness(k, iCell) / (layerThickness(k, iCell) + layerThickness(k-1, iCell))) / layerThickness(k-1, iCell)
+            JacVertAdv1(k,k) = w(k+1,iCell) * (layerThickness(k+1, iCell) / (layerThickness(k, iCell) + layerThickness(k+1, iCell))) / layerThickness(k, iCell) - &
                               w(k,iCell) * (layerThickness(k-1, iCell) / (layerThickness(k, iCell) + layerThickness(k-1, iCell))) / layerThickness(k, iCell)
-            JacVertAdv(k,k+1) = w(k+1,iCell) * (layerThickness(k, iCell) / (layerThickness(k, iCell) + layerThickness(k+1, iCell))) / layerThickness(k+1, iCell)
+            JacVertAdv1(k,k+1) = w(k+1,iCell) * (layerThickness(k, iCell) / (layerThickness(k, iCell) + layerThickness(k+1, iCell))) / layerThickness(k+1, iCell)
          end do
 
-         JacVertAdv(N,N-1) = - w(N,iCell) * (layerThickness(N, iCell) / (layerThickness(N, iCell) + layerThickness(N-1, iCell))) / layerThickness(N-1, iCell)
-         JacVertAdv(N,N) = - w(N,iCell) * (layerThickness(N-1, iCell) / (layerThickness(N, iCell) + layerThickness(N-1, iCell))) / layerThickness(N, iCell)
+         JacVertAdv1(N,N-1) = - w(N,iCell) * (layerThickness(N, iCell) / (layerThickness(N, iCell) + layerThickness(N-1, iCell))) / layerThickness(N-1, iCell)
+         JacVertAdv1(N,N) = - w(N,iCell) * (layerThickness(N-1, iCell) / (layerThickness(N, iCell) + layerThickness(N-1, iCell))) / layerThickness(N, iCell)
+
+         JacVertAdv2(1,1) = wOld(2,iCell) * (layerOld(2, iCell) / (layerOld(2, iCell) + layerOld(1, iCell))) / layerOld(1, iCell)
+         JacVertAdv2(1,2) = wOld(2,iCell) * (layerOld(1, iCell) / (layerOld(2, iCell) + layerOld(1, iCell))) / layerOld(2, iCell)
+
+         do k = 2, N-1
+            JacVertAdv2(k,k-1) = - wOld(k,iCell) * (layerOld(k, iCell) / (layerOld(k, iCell) + layerOld(k-1, iCell))) / layerOld(k-1, iCell)
+            JacVertAdv2(k,k) = wOld(k+1,iCell) * (layerOld(k+1, iCell) / (layerOld(k, iCell) + layerOld(k+1, iCell))) / layerOld(k, iCell) - &
+                              wOld(k,iCell) * (layerOld(k-1, iCell) / (layerOld(k, iCell) + layerOld(k-1, iCell))) / layerOld(k, iCell)
+            JacVertAdv2(k,k+1) = wOld(k+1,iCell) * (layerOld(k, iCell) / (layerOld(k, iCell) + layerOld(k+1, iCell))) / layerOld(k+1, iCell)
+         end do
+
+         JacVertAdv2(N,N-1) = - wOld(N,iCell) * (layerOld(N, iCell) / (layerOld(N, iCell) + layerOld(N-1, iCell))) / layerOld(N-1, iCell)
+         JacVertAdv2(N,N) = - wOld(N,iCell) * (layerOld(N-1, iCell) / (layerOld(N, iCell) + layerOld(N-1, iCell))) / layerOld(N, iCell)
 
       end select ! vertOrder
 
-      !do i = 1, N
-      !   do j = 1, N
-      !      JacVert(i,j) = JacVertAdv(i,j) + JacVertDiff(i,j)
-      !   end do
-      !end do
+      do i = 1, N
+         do j = 1, N
+            JacVertAdv(i,j) = 0.5_RKIND*(JacVertAdv1(i,j) + JacVertAdv2(i,j))
+         end do
+      end do
 
       !Assemble the jacobian by colum using JacVert
       do i = 1, N
@@ -535,7 +554,7 @@ module ocn_time_integration_ETD
          end do
       end do
 
-      deallocate(JacVertAdv)
+      deallocate(JacVertAdv,JacVertAdv1, JacVertAdv2)
 
    end subroutine jacobianVert
 
