@@ -179,7 +179,9 @@ module ocn_time_integration_split
          BtrCorIter,      &! loop index for barotropic coriolis cycle
          stage1_tend_time,&! time index for stage 1 tendencies
          edgeHaloComputeCounter, &! halo counters to reduce
-         cellHaloComputeCounter   ! halo updates during cycling
+         cellHaloComputeCounter, &! halo updates during cycling
+         counter1, &
+         counter2
 
       real (kind=RKIND) :: &
          normalThicknessFluxSum, &! sum of thickness flux in column
@@ -193,7 +195,8 @@ module ocn_time_integration_split
          temp_mask,        &! temporary mask (edgeMask)
          lat,              &! cell latitude
          sshCell1,         &! sea sfc height in neighboring cells
-         sshCell2
+         sshCell2,         &
+         nOffline
 
       real (kind=RKIND), dimension(:,:), allocatable:: &
          uTemp
@@ -407,7 +410,7 @@ module ocn_time_integration_split
       endif
 
       allocate(thickAdjust(nVertLevels, nCellsAll))
-      allocate(CFLz(nVertLevels, nCellsOwned))
+      allocate(CFLz(nVertLevels, nCellsAll))
 
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(normalVelocityCur, normalBarotropicVelocityCur, &
@@ -1983,6 +1986,7 @@ module ocn_time_integration_split
 #ifdef MPAS_OPENACC
             !$acc loop vector
 #endif
+            !print*, iCell
             do k = minLevelCell(iCell), maxLevelCell(iCell)
                ! this is h_{n+1}
                layerThicknessNew(k,iCell) = &
@@ -2163,6 +2167,7 @@ module ocn_time_integration_split
                            !$omp end parallel
 #endif
                         else
+                           nOffline = real(config_offline_int, RKIND)
                            if (itimestep==1) then
                               do iCell = 1, nCellsAll
                                  do k = minLevelCell(iCell), maxLevelCell(iCell)
@@ -2170,39 +2175,51 @@ module ocn_time_integration_split
                                  end do
                               end do
                            end if
-                           if (mod(itimestep,2)==1) then
+                           !if (mod(itimestep,2)==1) then
+                           if (modulo(itimestep,config_offline_int)==1) then
                               do iCell = 1, nCellsAll
                                  vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
                               end do
                            end if
-                           if (mod(itimestep,2)==0) then
+                           if (modulo(itimestep,config_offline_int)==2 .or. modulo(itimestep,config_offline_int)==3) then
+                              do iCell = 1, nCellsAll
+                                 vertAleTransportAvg(:,iCell) = vertAleTransportAvg(:,iCell) + vertAleTransportTop(:,iCell)
+                              end do
+                           end if
+                           !if (mod(itimestep,2)==0) then
+                           if (modulo(itimestep,config_offline_int)==0) then
                               print*, 'itimestep ', itimestep
+                              counter1 = 0
+                              counter2 = 0
                               !$omp parallel
                               !$omp do schedule(runtime) private(k)
                               do iCell = 1, nCellsAll
+                                 !print*, iCell
                                  do k = minLevelCell(iCell), maxLevelCell(iCell)
                                     !thickAdjust(k,iCell) = layerThicknessCur(k,iCell) + dt * (layerThicknessTend(k,iCell)-vertAleTransportTop(k+1,iCell)+vertAleTransportTop(k,iCell))
-                                    vertAleTransportAvg(k, iCell) = 0.5_RKIND*(vertAleTransportAvg(k, iCell)+vertAleTransportTop(k,iCell))
-                                    tracersGroupNew(:,k,iCell) = (tracersGroupCur(:,k,iCell) * layerThicknessOld(k,iCell) + 2.0_RKIND*dt &
+                                    vertAleTransportAvg(k, iCell) = (1./nOffline)*(vertAleTransportAvg(k, iCell)+vertAleTransportTop(k,iCell))
+                                    tracersGroupNew(:,k,iCell) = (tracersGroupCur(:,k,iCell) * layerThicknessOld(k,iCell) + nOffline*dt &
                                                                * tracersGroupTend(:,k,iCell) ) / layerThicknessNew(k,iCell)
                                                                !* tracersGroupTend(:,k,iCell)) / thickAdjust(k,iCell)
                                     !layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
                                  end do
-                                 vertAleTransportAvg(maxLevelCell(iCell)+1, iCell) = 0.5_RKIND*(vertAleTransportAvg(maxLevelCell(iCell)+1, iCell)+vertAleTransportTop(maxLevelCell(iCell)+1,iCell))
+                                 vertAleTransportAvg(maxLevelCell(iCell)+1, iCell) = 0.25_RKIND*(vertAleTransportAvg(maxLevelCell(iCell)+1, iCell)+vertAleTransportTop(maxLevelCell(iCell)+1,iCell))
                               end do
                               !$omp end do
                               !$omp end parallel
 
 !                              call ocn_time_integrator_ETD(2.0_RKIND*dt, vertAleTransportAvg, layerThicknessOld, layerThicknessNew, tracersGroupCur, tracersGroupNew, tracersGroupTend)
 
-                              !$omp parallel
-                              !$omp do schedule(runtime) private(k)
+                              print*, 'nCellsOwned = ', nCellsOwned
+!                              !$omp parallel
+!                              !$omp do schedule(runtime) private(k)
                               do iCell = 1, nCellsOwned
                                  do k = minLevelCell(iCell), maxLevelCell(iCell)
-                                    CFLz(k,iCell) = vertAleTransportTop(k,iCell)*(2.0_RKIND*dt)/restingThickness(k,iCell)
+                                    CFLz(k,iCell) = vertAleTransportTop(k,iCell)*(nOffline*dt)/restingThickness(k,iCell)
                                  end do
-                                 if (maxval(CFLz(1:maxLevelCell(iCell),iCell))<1.0_RKIND) then
-                                 !if (iCell<4000) then
+                                 !if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<1.0_RKIND) then
+                                 if (iCell>1500) then
+                                    counter1 = counter1 + 1
                                     !Compute vertical adv tendency
                                     do k = minLevelCell(iCell), maxLevelCell(iCell)
                                        tracersGroupTend(:,k,iCell) = 0.0_RKIND
@@ -2211,24 +2228,29 @@ module ocn_time_integration_split
                                        2.0_RKIND*dt, tracersGroupTend, iCell)
                                     !Forward Euler step
                                     do k = minLevelCell(iCell), maxLevelCell(iCell)
-                                       tracersGroupNew(:,k,iCell) = tracersGroupNew(:,k,iCell) + (2.0_RKIND*dt &
+                                       tracersGroupNew(:,k,iCell) = tracersGroupNew(:,k,iCell) + (nOffline*dt &
                                                                   * tracersGroupTend(:,k,iCell)) / layerThicknessNew(k,iCell)
-                                       layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
                                     end do
                                  else
+                                    counter2 = counter2 + 1
                                     !print*, iCell
-                                    call ocn_tracer_vertAdv_tend_implicit_column(2.0_RKIND*dt, vertAleTransportAvg, &
+                                    call ocn_tracer_vertAdv_tend_implicit_column(nOffline*dt, vertAleTransportAvg, &
                                        layerThicknessNew, tracersGroupNew, iCell, err)
                                  end if
+                                 do k = minLevelCell(iCell), maxLevelCell(iCell)
+                                    layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
+                                 end do
                               end do
-                              !$omp end do
-                              !$omp end parallel
+!                              !$omp end do
+!                              !$omp end parallel
 
                               !! Halo update on all tracer groups
                               !call mpas_dmpar_field_halo_exch(domain, 'debugTracers', timeLevel=2)
 
+                              print*, '# explicit columns = ', counter1
+                              print*, '# implicit columns = ', counter2
                               !tridiag solver for vertical diffusion and vertical advection
-                              call ocn_vmix_vertAdv_implicit_tracersOnly(2.0_RKIND*dt, itimestep, meshPool, &
+                              call ocn_vmix_vertAdv_implicit_tracersOnly(nOffline*dt, itimestep, meshPool, &
                                             statePool, forcingPool, scratchPool, err, 2)
                            end if
                         end if

@@ -194,6 +194,10 @@
                                         description="Turns on and off the offline advancement in time of passive tracers with an ETD scheme within the split-explicit time-stepping."
                                         possible_values=".true. or .false."
                 />
+                <nml_option name="config_offline_int" type="integer" default_value="2"
+                                        description="Configures the length of the long time-step."
+                                        possible_values="Any positive integer number. This number represents how many short time-steps there are in between two long ones."
+                />
 	</nml_record>
 	<nml_record name="hmix" mode="forward">
 		<nml_option name="config_hmix_scaleWithMesh" type="logical" default_value=".false."

@@ -1223,8 +1223,8 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_vertAdv_tend_implicit_column(dt, w, layerThickness, tracers, &
-                                                     iCell, err)!{{{
+   subroutine ocn_tracer_vertAdv_tend_implicit_column(dt, w, layerThickness, &
+                                                     tracers, iCell, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -1282,7 +1282,7 @@ contains
       allocate(rhs(num_tracers,nVertLevels))
       allocate(th(num_tracers,nVertLevels))
 
-      call mpas_timer_start('vert adv passive tracers imp loop', .false.)
+      !call mpas_timer_start('vert adv passive tracers imp loop', .false.)
 
       N = maxLevelCell(iCell)
 
@@ -1319,7 +1319,7 @@ contains
       tracers(:,1:N,iCell) = tracersTemp(:,1:N)
       tracers(:,N+1:nVertLevels,iCell) = -1e34
 
-      call mpas_timer_stop('vert adv passive tracers imp loop')
+      !call mpas_timer_stop('vert adv passive tracers imp loop')
 
       deallocate(A, B, C, tracersTemp, rhs, th)
 

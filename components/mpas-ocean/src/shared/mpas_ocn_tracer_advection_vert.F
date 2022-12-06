@@ -329,18 +329,18 @@ module ocn_tracer_advection_vert
       ! Initialize return flux to zero
       ! Also ensures that top and bottom fluxes are zero
 
-#ifdef MPAS_OPENACC
-      !$acc parallel loop collapse(2) present(vertFlx)
-#else
-      !$omp parallel
-      !$omp do schedule(runtime) private(k)
-#endif
+!#ifdef MPAS_OPENACC
+!      !$acc parallel loop collapse(2) present(vertFlx)
+!#else
+!      !$omp parallel
+!      !$omp do schedule(runtime) private(k)
+!#endif
       do k=1,nVertLevels+1
          vertFlx(k,iCell) = 0.0_RKIND
       end do
-#ifndef MPAS_OPENACC
-      !$omp end do
-#endif
+!#ifndef MPAS_OPENACC
+!      !$omp end do
+!#endif
 
       ! Compute flux for interior layers at high order based on
       ! user-requested order
@@ -348,15 +348,15 @@ module ocn_tracer_advection_vert
       select case (vertOrder)
       case (vertOrder4)
 
-#ifdef MPAS_OPENACC
-         !$acc parallel loop &
-         !$acc    present(minLevelCell, maxLevelCell, w, &
-         !$acc            vertFlx, tracer) &
-         !$acc    private(k, kmin, kmax)
-#else
-         !$omp do schedule(runtime) &
-         !$omp    private(k, kmin, kmax)
-#endif
+!#ifdef MPAS_OPENACC
+!         !$acc parallel loop &
+!         !$acc    present(minLevelCell, maxLevelCell, w, &
+!         !$acc            vertFlx, tracer) &
+!         !$acc    private(k, kmin, kmax)
+!#else
+!         !$omp do schedule(runtime) &
+!         !$omp    private(k, kmin, kmax)
+!#endif
          kmin = minLevelCell(iCell)
          kmax = maxLevelCell(iCell)
          do k=kmin+2,kmax-1
@@ -367,21 +367,21 @@ module ocn_tracer_advection_vert
                                              tracer(k-2,iCell)))/&
                                              12.0_RKIND
          end do ! vertical loop
-#ifndef MPAS_OPENACC
-         !$omp end do
-#endif
+!#ifndef MPAS_OPENACC
+!         !$omp end do
+!#endif
 
       case (vertOrder3)
 
-#ifdef MPAS_OPENACC
-         !$acc parallel loop &
-         !$acc    present(minLevelCell, maxLevelCell, w, &
-         !$acc            vertFlx, tracer) &
-         !$acc    private(k, kmin, kmax)
-#else
-         !$omp do schedule(runtime) &
-         !$omp    private(k, kmin, kmax)
-#endif
+!#ifdef MPAS_OPENACC
+!         !$acc parallel loop &
+!         !$acc    present(minLevelCell, maxLevelCell, w, &
+!         !$acc            vertFlx, tracer) &
+!         !$acc    private(k, kmin, kmax)
+!#else
+!         !$omp do schedule(runtime) &
+!         !$omp    private(k, kmin, kmax)
+!#endif
          kmin = minLevelCell(iCell)
          kmax = maxLevelCell(iCell)
          do k=kmin+2,kmax-1
@@ -397,22 +397,22 @@ module ocn_tracer_advection_vert
                                               tracer(k-1,iCell))))/ &
                                               12.0_RKIND
          end do ! vertical loop
-#ifndef MPAS_OPENACC
-         !$omp end do
-#endif
+!#ifndef MPAS_OPENACC
+!         !$omp end do
+!#endif
 
       case (vertOrder2)
-#ifdef MPAS_OPENACC
-         !$acc parallel loop &
-         !$acc    present(minLevelCell, maxLevelCell, w, &
-         !$acc            layerThick, vertFlx, tracer) &
-         !$acc    private(k, kmin, kmax, &
-         !$acc            verticalWeightK, verticalWeightKm1)
-#else
-         !$omp do schedule(runtime) &
-         !$omp    private(k, kmin, kmax, &
-         !$omp            verticalWeightK, verticalWeightKm1)
-#endif
+!#ifdef MPAS_OPENACC
+!         !$acc parallel loop &
+!         !$acc    present(minLevelCell, maxLevelCell, w, &
+!         !$acc            layerThick, vertFlx, tracer) &
+!         !$acc    private(k, kmin, kmax, &
+!         !$acc            verticalWeightK, verticalWeightKm1)
+!#else
+!         !$omp do schedule(runtime) &
+!         !$omp    private(k, kmin, kmax, &
+!         !$omp            verticalWeightK, verticalWeightKm1)
+!#endif
          kmin = minLevelCell(iCell)
          kmax = maxLevelCell(iCell)
          do k=kmin+2,kmax-1
@@ -426,9 +426,9 @@ module ocn_tracer_advection_vert
                         (verticalWeightK  *tracer(k  ,iCell) + &
                          verticalWeightKm1*tracer(k-1,iCell))
          end do ! vertical loop
-#ifndef MPAS_OPENACC
-         !$omp end do
-#endif
+!#ifndef MPAS_OPENACC
+!         !$omp end do
+!#endif
 
       end select ! vertOrder
 
@@ -436,17 +436,17 @@ module ocn_tracer_advection_vert
       ! layers near the top and bottom where high-order forms
       ! can not be computed.
 
-#ifdef MPAS_OPENACC
-      !$acc parallel loop &
-      !$acc    present(minLevelCell, maxLevelCell, w, &
-      !$acc            layerThick, vertFlx, tracer) &
-      !$acc    private(k, kmin, kmax, &
-      !$acc            verticalWeightK, verticalWeightKm1)
-#else
-      !$omp do schedule(runtime) &
-      !$omp    private(k, kmin, kmax, &
-      !$omp            verticalWeightK, verticalWeightKm1)
-#endif
+!#ifdef MPAS_OPENACC
+!      !$acc parallel loop &
+!      !$acc    present(minLevelCell, maxLevelCell, w, &
+!      !$acc            layerThick, vertFlx, tracer) &
+!      !$acc    private(k, kmin, kmax, &
+!      !$acc            verticalWeightK, verticalWeightKm1)
+!#else
+!      !$omp do schedule(runtime) &
+!      !$omp    private(k, kmin, kmax, &
+!      !$omp            verticalWeightK, verticalWeightKm1)
+!#endif
       kmin = minLevelCell(iCell)
       kmax = maxLevelCell(iCell)
       ! at top, flux is zero (already initialized)
@@ -475,10 +475,10 @@ module ocn_tracer_advection_vert
                        (verticalWeightK  *tracer(k  ,iCell) + &
                         verticalWeightKm1*tracer(k-1,iCell))
       end if ! kmax > kmin
-#ifndef MPAS_OPENACC
-      !$omp end do
-      !$omp end parallel
-#endif
+!#ifndef MPAS_OPENACC
+!      !$omp end do
+!      !$omp end parallel
+!#endif
 
    !--------------------------------------------------------------------
 

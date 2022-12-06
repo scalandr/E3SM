@@ -477,6 +477,7 @@ module ocn_tracer_advection_std
         end do
 #ifndef MPAS_OPENACC
         !$omp end do
+        !$omp end parallel
 #endif
 
       end do ! iTracer loop
@@ -583,6 +584,7 @@ module ocn_tracer_advection_std
         end do
 #ifndef MPAS_OPENACC
         !$omp end do
+        !$omp end parallel
 #endif
 
         ! Compute the high order vertical flux.
@@ -593,14 +595,14 @@ module ocn_tracer_advection_std
         ! Accumulate the scaled high order vertical tendencies.
         vertDivFactor = 1.0_RKIND
 
-#ifdef MPAS_OPENACC
-        !$acc parallel loop &
-        !$acc    present(minLevelCell, maxLevelCell, tend, &
-        !$acc            highOrderFlxVert) &
-        !$acc    private(k, kmin, kmax)
-#else
-        !$omp do schedule(runtime) private(k, kmin, kmax)
-#endif
+!#ifdef MPAS_OPENACC
+!        !$acc parallel loop &
+!        !$acc    present(minLevelCell, maxLevelCell, tend, &
+!        !$acc            highOrderFlxVert) &
+!        !$acc    private(k, kmin, kmax)
+!#else
+!        !$omp do schedule(runtime) private(k, kmin, kmax)
+!#endif
         kmin = minLevelCell(iCell)
         kmax = maxLevelCell(iCell)
 
@@ -609,10 +611,10 @@ module ocn_tracer_advection_std
                       vertDivFactor*(highOrderFlxVert(k+1, iCell) &
                                    - highOrderFlxVert(k, iCell))
         end do ! k loop
-#ifndef MPAS_OPENACC
-        !$omp end do
-        !$omp end parallel
-#endif
+!#ifndef MPAS_OPENACC
+!        !$omp end do
+!        !$omp end parallel
+!#endif
       end do ! iTracer loop
 
       !$acc exit data &

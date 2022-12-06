@@ -545,6 +545,9 @@ contains
          nTracersGroup,      &! number of tracers in each tracer group
          nTracersEcosys       ! number of ecosystem tracers
 
+      real (kind=RKIND) :: &
+         nOffline
+
       logical :: &
          activeTracersOnly,  &! only compute tend for active tracers
          isActiveTracer,     &! is this group the active tracer group
@@ -667,7 +670,8 @@ contains
       ! allocate and transfer data not specific to tracer groups
       allocate(normalThicknessFlux(nVertLevels, nEdgesAll+1))
 
-      if (mod(itimestep,2)==1 .and. firstBaroclinicStep) then
+      !if (mod(itimestep,2)==1 .and. firstBaroclinicStep) then
+      if (modulo(itimestep,config_offline_int)==1 .and. firstBaroclinicStep) then
          do iEdge = 1, nEdgesAll
             normalThicknessFluxAvg(:, iEdge) = 0.0_RKIND
          end do
@@ -707,8 +711,8 @@ contains
 #endif
 
       if (.not. firstBaroclinicStep) then
-         !$omp parallel
-         !$omp do schedule(runtime) private(iEdge)
+!         !$omp parallel
+!         !$omp do schedule(runtime) private(iEdge)
          do iEdge = 1, nEdgesAll
             normalThicknessFluxAvg(:, iEdge) = normalThicknessFluxAvg(:, iEdge) + normalThicknessFlux(:, iEdge)
          end do
@@ -717,10 +721,10 @@ contains
                activeTracersAvg(:,k,iCell) = activeTracersAvg(:,k,iCell) + activeTracers(:,k,iCell)
             end do
          end do
-#ifndef MPAS_OPENACC
-         !$omp end do
-         !$omp end parallel
-#endif
+!#ifndef MPAS_OPENACC
+!         !$omp end do
+!         !$omp end parallel
+!#endif
 !         if (mod(itimestep,2)==1) then
 !            do iCell = 1, nCellsAll
 !               vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
@@ -730,25 +734,27 @@ contains
 !         end if
       end if
 
-      if (mod(itimestep,2)==0 .and. (.not. firstBaroclinicStep)) then
-        !$omp parallel
-        !$omp do schedule(runtime) private(k)
+      !if (mod(itimestep,2)==0 .and. (.not. firstBaroclinicStep)) then
+      if (modulo(itimestep,config_offline_int)==0 .and. (.not. firstBaroclinicStep)) then 
+         nOffline = real(config_offline_int,RKIND)
+!        !$omp parallel
+!        !$omp do schedule(runtime) private(k)
          do iEdge = 1, nEdgesAll
             do k = 1, nVertLevels
-              normalThicknessFluxAvg(k, iEdge) = 0.5_RKIND*normalThicknessFluxAvg(k, iEdge)
+              normalThicknessFluxAvg(k, iEdge) = (1./nOffline)*normalThicknessFluxAvg(k, iEdge)
             end do
          end do
          do iCell = 1, nCellsAll
             do k = 1, nVertLevels
-               activeTracersAvg(:,k,iCell) = 0.5_RKIND*activeTracersAvg(:,k,iCell)
+               activeTracersAvg(:,k,iCell) = (1./nOffline)*activeTracersAvg(:,k,iCell)
 !               vertAleTransportAvg(k,iCell) = 0.5_RKIND*(vertAleTransportAvg(k,iCell)+vertAleTransportTop(k,iCell))
 !               layerAvg2(k,iCell) = layerThickness(k,iCell)
             end do
          end do
-#ifndef MPAS_OPENACC
-        !$omp end do
-        !$omp end parallel
-#endif
+!#ifndef MPAS_OPENACC
+!        !$omp end do
+!        !$omp end parallel
+!#endif
       end if
 
       !
@@ -914,7 +920,7 @@ contains
 !                                           err)
 
             if (offlinePassive) then
-               if (mod(itimestep,2)==0) then
+               if (modulo(itimestep,config_offline_int)==0) then
                   call ocn_tracer_ecosys_compute(activeTracersAvg, tracerGroup, &
                                                  forcingPool, nTracersGroup, &
                                                  nCellsOwned, latCell, minLevelCell, &
@@ -1067,7 +1073,7 @@ contains
                                 forcingPool, tracerGroupSurfaceFlux, err)
          else
             if (offlinePassive) then
-               if (mod(itimestep,2)==0) then
+               if (modulo(itimestep,config_offline_int)==0) then
                   call ocn_surface_land_ice_fluxes_tracers(meshPool, groupName, &
                                       forcingPool, tracerGroupSurfaceFlux, err)
                end if
@@ -1218,9 +1224,9 @@ contains
                dt, tracerGroupTend, computeBudgets)
          else
             if (offlinePassive) then
-               if (mod(itimestep,2)==0) then
+               if (modulo(itimestep,config_offline_int)==0) then
                   call ocn_passive_tracer_advection_tend(tracerGroup, normalThicknessFluxAvg, &
-                     vertAleTransportAvg, layerThickness, tracerGroupTend, 2.0_RKIND*dt, computeBudgets)
+                     vertAleTransportAvg, layerThickness, tracerGroupTend, nOffline*dt, computeBudgets)
                end if
             else
                call ocn_tracer_advection_tend(tracerGroup, normalThicknessFlux, vertAleTransportTop, layerThickness, &
@@ -1269,11 +1275,11 @@ contains
                                       tracerGroupTend, err)
          else
             if (offlinePassive) then
-               if (mod(itimestep,2)==0) then
+               if (modulo(itimestep,config_offline_int)==0) then
                   call ocn_tracer_hmix_tend(meshPool, layerThickEdgeMean, &
                                          layerThickness, zMid, tracerGroup, &
                                          RediKappa, slopeTriadUp, &
-                                         slopeTriadDown, 2.0_RKIND*dt, isActiveTracer, &
+                                         slopeTriadDown, nOffline*dt, isActiveTracer, &
                                          RediKappaScaling, rediLimiterCount, &
                                          tracerGroupTend, err)
                end if
@@ -1338,7 +1344,7 @@ contains
                                   tracerGroupTend, err)
          else
             if (offlinePassive) then
-               if (mod(itimestep,2)==0) then
+               if (modulo(itimestep,config_offline_int)==0) then
                   call ocn_tracer_surface_flux_tend(meshPool, fractionAbsorbed, &
                                         fractionAbsorbedRunoff, layerThickness, &
                                         tracerGroupSurfaceFlux, &
@@ -1436,7 +1442,7 @@ contains
 !                                          tracerGroupSurfaceFlux, &
 !                                          tracerGroupTend, err)
                   if (offlinePassive) then
-                     if (mod(itimestep,2)==0) then
+                     if (modulo(itimestep,config_offline_int)==0) then
                         call ocn_tracer_nonlocalflux_tend(meshPool, &
                                                 vertNonLocalFlux, &
                                                 tracerGroupSurfaceFlux, &
