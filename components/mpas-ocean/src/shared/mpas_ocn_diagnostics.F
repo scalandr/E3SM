@@ -1336,6 +1336,7 @@ contains
          do k = minLevelCell(iCell)+1, maxLevelCell(iCell)
             BruntVaisalaFreqTop(k,iCell) = coef * (displacedDensity(k-1,iCell) - density(k,iCell)) &
               / (zMid(k-1,iCell) - zMid(k,iCell))
+            !print*, BruntVaisalaFreqTop(k,iCell), displacedDensity(k-1,iCell), - density(k,iCell)
           end do
       end do
 #ifndef MPAS_OPENACC

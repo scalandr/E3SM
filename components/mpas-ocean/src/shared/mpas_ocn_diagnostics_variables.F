@@ -140,6 +140,9 @@ module ocn_diagnostics_variables
    real (kind=RKIND), dimension(:,:), pointer :: wettingVelocity
    type (field2DReal), pointer :: wettingVelocityField
 
+   real (kind=RKIND), dimension(:,:), pointer :: Sm, Sh
+   real (kind=RKIND), dimension(:,:,:), pointer :: ugrad, vgrad, wgrad
+   real (kind=RKIND), dimension(:,:,:), pointer :: tgrad, sgrad
    real (kind=RKIND), dimension(:,:), pointer :: vertDiffTopOfCell
    real (kind=RKIND), dimension(:,:,:), pointer :: vertNonLocalFlux
    integer, dimension(:,:), pointer :: rediLimiterCount
@@ -200,6 +203,11 @@ module ocn_diagnostics_variables
    real (kind=RKIND), dimension(:), pointer :: SIvec_t0,SIvec_t1 ,SIvec_q0 ,SIvec_q1 ,SIvec_qh0
    real (kind=RKIND), dimension(:), pointer :: SIvec_w0,SIvec_w1 ,SIvec_wh0,SIvec_wh1,SIvec_y0
    real (kind=RKIND), dimension(:), pointer :: SIvec_z0,SIvec_z1 ,SIvec_zh0,SIvec_zh1
+   real (kind=RKIND), dimension(:,:), pointer :: dynamicViscosity, uStar, yPlus
+   real (kind=RKIND), dimension(:,:), pointer :: buoyancyProduction, shearProduction
+   real (kind=RKIND), dimension(:,:), pointer :: turbLength
+   real (kind=RKIND), dimension(:,:), pointer :: tkeAdvTend, tkeTransTend, tkeDissTend
+   real (kind=RKIND), dimension(:,:), pointer :: glsAdvTend, glsTransTend, glsDissTend
 
    !--------------------------------------------------------------------
    !
@@ -635,6 +643,25 @@ contains
       call mpas_pool_get_array(diagnosticsPool, 'dThreshMLD', dThreshMLD)
       call mpas_pool_get_array(diagnosticsPool, 'surfacePressure', &
                 surfacePressure)
+      call mpas_pool_get_array(diagnosticsPool, 'yPlus', yPlus)
+      call mpas_pool_get_array(diagnosticsPool, 'uStar', uStar)
+      call mpas_pool_get_array(diagnosticsPool, 'dynamicViscosity', dynamicViscosity)
+      call mpas_pool_get_array(diagnosticsPool, 'buoyancyProduction', buoyancyProduction)
+      call mpas_pool_get_array(diagnosticsPool, 'turbLength', turbLength)
+      call mpas_pool_get_array(diagnosticsPool, 'shearProduction', shearProduction)
+      call mpas_pool_get_array(diagnosticsPool, 'tkeAdvTend', tkeAdvTend)
+      call mpas_pool_get_array(diagnosticsPool, 'tkeDissTend', tkeDissTend)
+      call mpas_pool_get_array(diagnosticsPool, 'tkeTransTend', tkeTransTend)
+      call mpas_pool_get_array(diagnosticsPool, 'glsAdvTend', glsAdvTend)
+      call mpas_pool_get_array(diagnosticsPool, 'glsDissTend', glsDissTend)
+      call mpas_pool_get_array(diagnosticsPool, 'glsTransTend', glsTransTend)
+      call mpas_pool_get_array(diagnosticsPool, 'ugrad', ugrad)
+      call mpas_pool_get_array(diagnosticsPool, 'vgrad', vgrad)
+      call mpas_pool_get_array(diagnosticsPool, 'wgrad', wgrad)
+      call mpas_pool_get_array(diagnosticsPool, 'tgrad', tgrad)
+      call mpas_pool_get_array(diagnosticsPool, 'sgrad', sgrad)
+      call mpas_pool_get_array(diagnosticsPool, 'Sm', Sm)
+      call mpas_pool_get_array(diagnosticsPool, 'Sh', Sh)
 
       ! Semi-implicit Array Pointer retrievals
       if (trim(config_time_integrator) == 'split_implicit') then
@@ -775,7 +802,24 @@ contains
          !$acc                   normalVelocitySurfaceLayer,      &
          !$acc                   transportVelocityMeridional,     &
          !$acc                   penetrativeTemperatureFluxOBL,   &
-         !$acc                   normalizedRelativeVorticityCell  &
+         !$acc                   normalizedRelativeVorticityCell, &
+         !$acc                   yPlus,                           &
+         !$acc                   uStar,                           &
+         !$acc                   dynamicViscosity,                &
+         !$acc                   buoyancyProduction,              &
+         !$acc                   turbLength,                      &
+         !$acc                   shearProduction,                 &
+         !$acc                   tkeTransTend,                    &
+         !$acc                   tkeAdvTend,                      &
+         !$acc                   tkeDissTend,                     &
+         !$acc                   glsTransTend,                    &
+         !$acc                   glsAdvTend,                      &
+         !$acc                   glsDissTend,                     &
+         !$acc                   ugrad,                           &
+         !$acc                   vgrad,                           &
+         !$acc                   wgrad,                           &
+         !$acc                   Sm,                              &
+         !$acc                   Sh,                              &
          !$acc                   )
       end if
       if ( trim(config_ocean_run_mode) == 'forward' ) then
@@ -1016,7 +1060,24 @@ contains
          !$acc                   normalVelocitySurfaceLayer,      &
          !$acc                   transportVelocityMeridional,     &
          !$acc                   penetrativeTemperatureFluxOBL,   &
-         !$acc                   normalizedRelativeVorticityCell  &
+         !$acc                   normalizedRelativeVorticityCell, &
+         !$acc                   yPlus,                           &
+         !$acc                   uStar,                           &
+         !$acc                   dynamicViscosity,                &
+         !$acc                   buoyancyProduction,              &
+         !$acc                   turbLength,                      &
+         !$acc                   shearProduction,                 &
+         !$acc                   tkeAdvTend,                      &
+         !$acc                   tkeDissTend,                     &
+         !$acc                   tkeTransTend,                    &
+         !$acc                   glsAdvTend,                      &
+         !$acc                   glsDissTend,                     &
+         !$acc                   glsTransTend,                    &
+         !$acc                   ugrad,                           &
+         !$acc                   vgrad,                           &
+         !$acc                   wgrad,                           &
+         !$acc                   Sm,                              &
+         !$acc                   Sh,                              &
          !$acc                   )
       end if
       if ( trim(config_ocean_run_mode) == 'forward' ) then
@@ -1215,7 +1276,24 @@ contains
                  normalVelocitySurfaceLayer,      &
                  transportVelocityMeridional,     &
                  penetrativeTemperatureFluxOBL,   &
-                 normalizedRelativeVorticityCell)
+                 normalizedRelativeVorticityCell, &
+                 yPlus,                           &
+                 uStar,                           &
+                 ugrad,                           &
+                 vgrad,                           &
+                 wgrad,                           &
+                 Sh,                              &
+                 Sm,                              &
+                 dynamicViscosity,                &
+                 buoyancyProduction,              &
+                 turbLength,                      &
+                 shearProduction,                 &
+                 tkeAdvTend,                      &
+                 tkeDissTend,                     &
+                 tkeTransTend,                    &
+                 glsAdvTend,                      &
+                 glsDissTend,                     &
+                 glsTransTend)
       end if
       if ( trim(config_ocean_run_mode) == 'forward' ) then
          nullify(wettingVelocity)

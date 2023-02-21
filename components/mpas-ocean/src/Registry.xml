@@ -475,6 +475,115 @@
 					possible_values="Any positive real value."
 		/>
 	</nml_record>
+        <nml_record name="twoEquationModel" mode="forward">
+            <nml_option name="config_two_equation_mesoscale" type="logical" default_value=".false." units="NA"
+                                        description="flag determining if parameters and model values be used to determine GM kappa"
+                                        possible_values=".true. or .false."
+                />
+                <nml_option name="config_use_two_equation_turbulence_model" type="logical" default_value=".false." units="NA"
+                                        description="If true, use the GLS model extended to three dimensions"
+                                        possible_values=".true. or .false."
+                />
+                <nml_option name="config_two_equation_hor_adv_order" type="integer" default_value="3" units="NA"
+                                        description="order for horizontal advection of TKE and glsPsi"
+                                        possible_values="2, 3, 4"
+                />
+                <nml_option name="config_two_equation_coef_3rd_order" type="real" default_value="0.25" units="NA"
+                                        description="Reconstruction of 3rd-order reconstruction to blend with 4th-order reconstuction"
+                                        possible_values="any real between 0 and 1"
+                />
+                <nml_option name="config_two_equation_vert_adv_order" type="integer" default_value="3" units="NA"
+                                        description="order for vertical advection of TKE and glsPsi"
+                                        possible_values="2, 3, 4"
+                />
+                <nml_option name="config_two_equation_check_monotonicity" type="logical" default_value=".false." units="NA"
+                                        description="flag to determine whether or not to check for monotonicity in advection"
+                                        possible_values=".true. or .false."
+                />
+                <nml_option name="config_two_equation_eps_min" type="real" default_value="1.0e-15" units="m^2 s^-3"
+                                        description="artificial lower limit on dissipation"
+                                        possible_values="small real numbers"
+                />
+                <nml_option name="config_two_equation_length_min" type="real" default_value="0.1" units="m"
+                                        description="artificial length scale minimum"
+                                        possible_values="small real numbers"
+                />
+                <nml_option name="config_two_equation_tke_min" type="real" default_value="1e-25" units="m^2 s^-2"
+                                        description="artificial tke minimum"
+                                        possible_values="small real numbers"
+                />
+                <nml_option name="config_two_equation_psi_min" type="real" default_value="1e-25" 
+                                        description="artificial glsPsi minimum"
+                                        possible_values="small real numbers"
+                />
+                <nml_option name="config_LES_mode" type="logical" default_value=".false." units="unitless"
+                                        description="logical to enable LES mode, requires config_use_two_equation_model='.true.'"
+                                        possible_values=".true. or .false."
+                />
+                <nml_option name="smagorinsky_coefficient" type="real" default_value="0.18" units="unitless"
+                                        description="Smagorinsky coefficient for the LES closure"
+                                        possible_values="usually between 0.1 and 0.2"
+                />
+                <nml_option name="config_two_equation_model_choice" type="character" default_value="epsilon" units="NA"
+                                        description="choice for psi equation in the two equation model"
+                                        possible_values="'epsilon', 'omega', 'kl', 'ktau', user-defined"
+                                        />
+                <nml_option name="config_user_c_mu" type="real" default_value="0.5477" units="NA"
+                                        description="choice for the c_mu constant if user wishes to define the model. only used if config_two_equation_model_choice = 'user-defined'"
+                                        possible_values="small positive reals near 0.5"
+                />
+                <nml_option name="config_user_sigma_k" type="real" default_value="1.0" units="NA"
+                                        description="choice for the sigma_k constant if user wishes to define the model. only used if config_two_equation_model_choice = 'user-defined'"
+                                        possible_values="values around 1-2"
+                />
+                <nml_option name="config_user_sigma_psi" type="real" default_value="1.3" units="NA"
+                                        description="choice for the sigma_psi constant if user wishes to define the model. only used if config_two_equation_model_choice = 'user-defined'"
+                                        possible_values="Positive reals"
+                />
+                <nml_option name="config_user_c_psi1" type="real" default_value="1.44" units="NA"
+                                        description="choice for the c_psi1 constant if user wishes to define the model. only used if config_two_equation_model_choice = 'user-defined'"
+                                        possible_values="small positive reals around 0-2"
+                />
+                <nml_option name="config_user_c_psi2" type="real" default_value="1.92" units="NA"
+                                        description="choice for the c_psi2 constant if user wishes to define the model. only used if config_two_equation_model_choice = 'user-defined'"
+                                        possible_values="positive reals around 0-2"
+                />
+                <nml_option name="config_user_c_psi3" type="real" default_value="-0.692" units="NA"
+                                        description="choice for the c_psi3 constant if user wishes to define the model. only used if config_two_equation_model_choice = 'user-defined'"
+                                        possible_values="positive reals"
+                />
+                <nml_option name="config_user_c_p" type="real" default_value="3.0" units="NA"
+                                        description="choice for the p constant used in determining dissipation, only used if config_two_equation_model_choice = 'user-defined'"
+                                        possible_values="positive reals"
+                />
+                <nml_option name="config_user_c_m" type="real" default_value="1.5" units="NA"
+                                        description="choice for the m constant used in determining dissipation, only used if config_two_equation_model_choice= 'user-defined'"
+                                        possible_values="reals"
+                />
+                <nml_option name="config_user_c_n" type="real" default_value="-1.0" units="NA"
+                                        description="choice for the n constant used in determining dissipation, only used if config_two_equation_model_choice = 'user-defined'"
+                />
+                <nml_option name="fkin_value" type="real" default_value="1.0" units="unitless"
+                                        description="PANS model - choice for ratio modeled-to-resolved of turbulent kinetic energy"
+                                        possible_values="Reals in the interval 0 < fkin <= 1. fkin=0 (DNS) and fkin=1 (RANS). Recommended value = 0.25"
+                />
+                <nml_option name="feps_value" type="real" default_value="1.0" units="unitless"
+                                        description="PANS model - choice for ratio modeled-to-total of turbulent dissipation"
+                                        possible_values="Reals in the interval 0 < feps <= 1. feps=0 (DNS) and feps=1 (RANS). Recommended value = 1.00"
+                />
+                <nml_option name="config_tke_ini" type="real" default_value="1.0e-10" units="m^2/s^2"
+                                        description="Initial tke value"
+                                        possible_values="Any positive real value. Default value: k=1.0-10"
+                />
+                <nml_option name="config_nut_ini" type="real" default_value="1.25e-6" units="m^2/s^2"
+                                        description="Initial nut value to define glsPsi"
+                                        possible_values="Any positive real value. Default value: nut/nu=1 => nut=1.25e-6"
+                />
+                <nml_option name="config_ustar_factor" type="real" default_value="1.0" units="unitless"
+                                        description="factor on 'wall function' for when sublayer not resolved"
+                                        possible_values="positive reals"
+                />
+        </nml_record>
 	<nml_record name="cvmix" mode="forward">
 		<nml_option name="config_use_cvmix" type="logical" default_value=".true."
 					description="If true, use the Community Vertical MIXing routines to compute vertical diffusivity and viscosity"
@@ -1155,6 +1264,28 @@
 					possible_values="any positive real, but typically 1000-1035"
 		/>
 	</nml_record>
+        <nml_record name="LES_noise">
+            <nml_option name="config_LES_noise_enable" type="logical" default_value=".false." units="unitless"
+					description="Flag to enable adding noise to normal velocity"
+					possible_values=".true. or .false."
+                />
+                <nml_option name="config_LES_noise_max_time" type="real" default_value="0" units="s"
+					description="Time in seconds to apply noise"
+					possible_values="positive reals"
+		/>
+                <nml_option name="config_LES_noise_min_level" type="integer" default_value="1" units="unitless"
+                                        description="minimum level to apply noise, must be bigger than minLevelCell"
+                                        possible_values="positive integers"
+		/>
+                <nml_option name="config_LES_noise_max_level" type="integer" default_value="100" units="unitless"
+					description="maximum level to apply noise, must be smaller than maxLevelCell"
+					possible_values="positive integers"
+                />
+                <nml_option name="config_LES_noise_perturbation_magnitude" type="real" default_value="0.0001" units="unitless"
+                                        description="magnitude of noise to add to normal velocity"
+                                        possible_values="small positive integers"
+                />
+        </nml_record>
 	<nml_record name="pressure_gradient" mode="forward">
 		<nml_option name="config_pressure_gradient_type" type="character" default_value="pressure_and_zmid"
 					description="Form of pressure gradient terms in momentum equation. For most applications, the gradient of pressure and layer mid-depth are appropriate.  For isopycnal coordinates, one may use the gradient of the Montgomery potential.  The sea surface height gradient (ssh_gradient) option is for barotropic, depth-averaged pressure."
@@ -1609,6 +1740,9 @@
 			<var name="fVertex"/>
 			<var name="fCell"/>
 			<var name="bed_elevation"/>
+			<var name="distanceToBoundary"/>
+			<var name="boundaryNormalAngle"/>
+			<var name="boundaryCellMask"/>
 		</stream>
 
 		<stream name="output_init"
@@ -1728,6 +1862,9 @@
 			<var name="maxLevelCell"/>
 			<var name="refBottomDepth" packages="forwardMode;analysisMode"/>
 			<var name="restingThickness" packages="forwardMode;analysisMode"/>
+			<var name="distanceToBoundary"/>
+			<var name="boundaryNormalAngle"/>
+			<var name="boundaryCellMask"/>
 		</stream>
 
 		<stream name="input"
@@ -1875,6 +2012,8 @@
             <var name="gotmDissTopOfCell"/>
             <var name="gotmLengthTopOfCell"/>
             <var name="ssh_sal"/>
+			<var name="tke"/>
+			<var name="glsPsi"/>
 		</stream>
 
 		<stream name="output"
@@ -2188,6 +2327,12 @@
 		<var name="ssh" type="real" dimensions="nCells Time" units="m"
 			 description="sea surface height"
 		/>
+		<var name="tke" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-2}"
+			description="Turbulence Kinetic Energy for the two equation turbulence closure"
+		/>
+		<var name="glsPsi" type="real" dimensions="nVertLevels nCells Time" units="variable"
+			description="psi variable for the two equation turbulence closure (see Umlauf and Burchard 2003)"
+		/>
 
 		<!-- FIELDS FOR FREQUENCY FILTERED THICKNESS -->
 		<var name="highFreqThickness" type="real" dimensions="nVertLevels nCells Time" units="m"
@@ -2426,6 +2571,15 @@
 		<var name="bed_elevation" type="real" dimensions="nCells" units="m"
 			 description="Depth of the bottom of the ocean. Given as negative distance from sea level. Used as input to replace topography input file."
 		/>
+		<var name="distanceToBoundary" type="real" dimensions="nVertLevels nCells" units="m"
+			description="distance to solid boundary, only used for idealized case"
+		/>
+		<var name="boundaryNormalAngle" type="real" dimensions="nVertLevels nCells" units="radians"
+			description="angle of the boundary normal relative to east/west"
+		/>
+		<var name="boundaryCellMask" type="real" dimensions="nVertLevels nCells" units="unitless"
+			description="cell mask for boundary cells"
+		/>
 		<var name="bottomDepth" type="real" dimensions="nCells" units="m"
 			 description="Depth of the bottom of the ocean. Given as a positive distance from sea level."
 		/>
@@ -2548,6 +2702,13 @@
 			 description="time tendency of sea-surface height"
 			 packages="forwardMode"
 		/>
+                <var name="tendTKE" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-3}" name_in_code="tendTKE"
+                         description="time tendency of turbulence kinetic energy"
+                         packages="forwardMode"
+                />
+                <var name="tendglsPsi" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-4}" name_in_code="tendglsPsi"
+                  description="time tendency of psi variable from Umlauf and Burchard (2003)"
+                />
 		<var name="tendHighFreqThickness" type="real" dimensions="nVertLevels nCells Time" units="m s^-1" name_in_code="highFreqThickness"
 			 description="time tendency of high frequency-filtered layer thickness"
 			 missing_value="FILLVAL" missing_value_mask="cellMask"
@@ -3004,6 +3165,54 @@
 			 description="vertical viscosity defined at the cell center (horizontally) and top (vertically)"
 			 packages="forwardMode;analysisMode"
 		/>
+                <var name="dynamicViscosity" type="real" dimensions="nVertLevelsP1 nCells Time" units="Ns/m^2"
+                         description="dynamic viscosity of water as a function of temperature and salinity"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="uStar" type="real" dimensions="nVertLevels nCells Time" units="m s^{-1}"
+                         description="stress velocity for wall bounded flows"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="yPlus" type="real" dimensions="nVertLevels nCells Time" units="m"
+                         description="boundary normal coordinate"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="buoyancyProduction" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-3}"
+                         description="Turbulence kinetic energy production by buoyancy processes"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="shearProduction" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-3}"
+                         description="Turbulence kinetic energy production by shear processes"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="turbLength" type="real" dimensions="nVertLevels nCells Time" units="m"
+                         description="length scale or turbulent mixing"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="glsAdvTend" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-3}"
+                         description="glsPsi tendency from advection"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="glsDissTend" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-3}"
+                         description="glsPsi tend from dissipation"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="glsTransTend" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-3}"
+                         description="glsPsi tend from transport"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="tkeAdvTend" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-3}"
+                         description="turbulence kinetic energy tendency from advection"
+                         packages="forwardMode;analysisMode"
+                />
+                <var name="tkeDissTend" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-3}"
+                          description="turb tend from dissipation"
+                          packages="forwardMode;analysisMode"
+                />
+                <var name="tkeTransTend" type="real" dimensions="nVertLevels nCells Time" units="m^2 s^{-3}"
+                          description="turb tend from transport"
+                          packages="forwardMode;analysisMode"
+                />
 		<var name="vertDiffTopOfCell" type="real" dimensions="nVertLevelsP1 nCells Time" units="m^2 s^-1"
 			 description="vertical diffusion defined at the cell center (horizontally) and top (vertically)"
 			 packages="forwardMode;analysisMode"
@@ -3069,6 +3278,30 @@
 		<var name="indMLD" type="integer" dimensions="nCells Time"
 			description="index of model where mixed layer depth occurs (always one past)"
 		/>
+		<var name="strainRateTensor" type="real" dimensions="nVertLevels nCells Time" units="s^{-2}"
+                        description="strain rate tensor for the two equation turbulence model"
+		/>
+                <var name="ugrad" type="real" dimensions="R3 nVertLevels nCells Time" units="s^{-1}"
+                        description="three-dimensional gradient of zonal velocity"
+                />
+                <var name="vgrad" type="real" dimensions="R3 nVertLevels nCells Time" units="s^{-1}"
+                        description="three-dimensional gradient of meridional velocity"
+                />
+                <var name="tgrad" type="real" dimensions="R3 nVertLevels nCells Time" units="s^{-1}"
+                        description="three-dimensional gradient of temperature"
+                />
+                <var name="sgrad" type="real" dimensions="R3 nVertLevels nCells Time" units="s^{-1}"
+                        description="three-dimensional gradient of salinity"
+                />
+                <var name="wgrad" type="real" dimensions="R3 nVertLevels nCells Time" units="s^{-1}"
+                        description="three-dimensional gradient of vertical velocity"
+                />
+                <var name="Sh" type="real" dimensions="nVertLevels nCells Time" units="unitless"
+                        description="Structure function for heat and salt -- may want to consider separating at some point"
+                />
+                <var name="Sm" type="real" dimensions="nVertLevels nCells Time" units="unitless"
+                        description="Structure function for momentum"
+                />
 		<var name="dThreshMLD" type="real" dimensions="nCells Time" units="m"
 			description="mixed layer depth based on density threshold"
 		/>

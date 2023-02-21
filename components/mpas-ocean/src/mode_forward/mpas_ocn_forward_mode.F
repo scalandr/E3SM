@@ -43,6 +43,7 @@ module ocn_forward_mode
    use ocn_test
    use ocn_mesh
 
+   use ocn_two_equation_model
    use ocn_eddy_parameterization_helpers
    use ocn_thick_hadv
    use ocn_thick_vadv
@@ -350,6 +351,11 @@ module ocn_forward_mode
 
       ! Update any mesh fields that may have been modified during init
       call ocn_meshUpdateFields(domain)
+
+     if(config_use_two_equation_turbulence_model) then
+        call ocn_two_equation_init(domain, err_tmp)
+        ierr = ior(ierr, err_tmp)
+      end if
 
       if (config_conduct_tests) then
          call mpas_timer_start("test suite")
