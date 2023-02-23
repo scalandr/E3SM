@@ -44,6 +44,7 @@ module ocn_tracer_nonlocalflux
    !--------------------------------------------------------------------
 
    public :: ocn_tracer_nonlocalflux_tend, &
+             ocn_tracer_passive_nonlocalflux_tend, &
              ocn_tracer_nonlocalflux_init
 
    !--------------------------------------------------------------------
@@ -168,6 +169,120 @@ contains
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_nonlocalflux_tend!}}}
+
+!***********************************************************************
+!
+!  routine ocn_tracer_passive_nonlocalflux_tend
+!
+!> \brief   Computes tendency term due to non-local flux transport
+!> \author  Todd Ringler
+!> \date    11/25/13
+!> \details
+!>  This routine computes the tendency for tracers based the vertical divergence
+!of non-local fluxes.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_tracer_passive_nonlocalflux_tend(meshPool, vertNonLocalFluxAvg, surfaceTracerFlux, tend, err)!{{{
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mpas_pool_type), intent(in) :: &
+         meshPool          !< Input: mesh information
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+        surfaceTracerFlux !< Input: surface tracer fluxes
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+        vertNonLocalFluxAvg !< Input: averaged non-local flux of tracers
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:,:), intent(inout) :: &
+         tend          !< Input/Output: velocity tendency
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: iCell, k, iTracer, nTracers, nCells
+      integer, pointer :: nVertLevels
+      integer, dimension(:), pointer :: nCellsArray
+      integer, dimension(:), pointer :: minLevelCell, maxLevelCell
+      real (kind=RKIND) :: fluxTopOfCell, fluxBottomOfCell
+
+      err = 0
+
+      if (.not. nonLocalFluxOn) return
+
+      call mpas_timer_start('non-local flux')
+
+      call mpas_pool_get_dimension(meshPool, 'nCellsArray', nCellsArray)
+      call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevels)
+      nTracers = size(tend, dim=1)
+
+      call mpas_pool_get_array(meshPool, 'minLevelCell', minLevelCell)
+      call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
+
+      nCells = nCellsArray( 1 )
+
+      !$omp parallel
+      !$omp do schedule(runtime) private(k, iTracer, fluxTopOfCell,
+      !fluxBottomOfCell)
+      do iCell = 1, nCells
+        do k = minLevelCell(iCell)+1, maxLevelCell(iCell)-1
+
+          ! NOTE: at the moment, all tracers are based on the flux-profile used
+          ! for temperature, i.e. vertNonLocalFlux(1,:,:)
+          do iTracer = 1, nTracers
+            fluxTopOfCell = surfaceTracerFlux(iTracer, iCell) * vertNonLocalFluxAvg(k, iCell)
+            fluxBottomOfCell = surfaceTracerFlux(iTracer, iCell) * vertNonLocalFluxAvg(k+1, iCell)
+            tend(iTracer, k, iCell) = tend(iTracer, k, iCell) + (fluxTopOfCell-fluxBottomOfCell)
+          end do
+        end do
+
+        ! enforce boundary conditions at bottom of column
+        k = maxLevelCell(iCell)
+        do iTracer = 1, nTracers
+          fluxTopOfCell = surfaceTracerFlux(iTracer, iCell) * vertNonLocalFluxAvg(k, iCell)
+          fluxBottomOfCell = 0.0_RKIND
+          tend(iTracer, k, iCell) = tend(iTracer, k, iCell) + (fluxTopOfCell-fluxBottomOfCell)
+        end do
+
+        ! enforce boundary conditions at top of column
+        k = minLevelCell(iCell)
+        do iTracer = 1, nTracers
+          fluxTopOfCell = 0.0_RKIND
+          fluxBottomOfCell = surfaceTracerFlux(iTracer, iCell) * vertNonLocalFluxAvg(k+1, iCell)
+          tend(iTracer, k, iCell) = tend(iTracer, k, iCell) + (fluxTopOfCell-fluxBottomOfCell)
+        end do
+
+      end do
+      !$omp end do
+      !$omp end parallel
+
+      call mpas_timer_stop('non-local flux')
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_tracer_passive_nonlocalflux_tend!}}}
 
 !***********************************************************************
 !

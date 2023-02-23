@@ -134,6 +134,7 @@ module ocn_diagnostics_variables
    real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportTop
 
    real (kind=RKIND), dimension(:,:), pointer :: normalThicknessFluxAvg
+   real (kind=RKIND), dimension(:,:), pointer :: vertNonLocalFluxAvg
    real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportAvg
    real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportOld
    real (kind=RKIND), dimension(:,:), pointer :: layerThicknessOld
@@ -491,6 +492,8 @@ contains
                    layerAvg2)
          call mpas_pool_get_array(diagnosticsPool, 'normalThicknessFluxAvg', &
                    normalThicknessFluxAvg)
+         call mpas_pool_get_array(diagnosticsPool, 'vertNonLocalFluxAvg', &
+                   vertNonLocalFluxAvg)
          call mpas_pool_get_array(diagnosticsPool, 'activeTracersAvg', &
                    activeTracersAvg)
          call mpas_pool_get_array(diagnosticsPool, 'vertTransportVelocityTop', &
@@ -756,6 +759,7 @@ contains
          !$acc                   layerAvg1,                       &
          !$acc                   layerAvg2,                       &
          !$acc                   normalThicknessFluxAvg,          &
+         !$acc                   vertNonLocalFluxAvg,             &
          !$acc                   activeTracersAvg,                &
          !$acc                   GMBolusVelocityZonal,            &
          !$acc                   mleVelocityZonal,                &
@@ -1011,6 +1015,7 @@ contains
          !$acc                   layerAvg1,                       &
          !$acc                   layerAvg2,                       &
          !$acc                   normalThicknessFluxAvg,          &
+         !$acc                   vertNonLocalFluxAvg,             &
          !$acc                   activeTracersAvg,                &
          !$acc                   GMBolusVelocityZonal,            &
          !$acc                   mleVelocityZonal,                &
@@ -1224,6 +1229,7 @@ contains
                  layerAvg1,                       &
                  layerAvg2,                       &
                  normalThicknessFluxAvg,          &
+                 vertNonLocalFluxAvg,             &
                  activeTracersAvg,                &
                  GMBolusVelocityZonal,            &
                  mleVelocityZonal,                &

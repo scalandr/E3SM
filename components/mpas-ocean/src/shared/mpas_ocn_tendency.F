@@ -675,8 +675,9 @@ contains
          do iEdge = 1, nEdgesAll
             normalThicknessFluxAvg(:, iEdge) = 0.0_RKIND
          end do
-         do k = 1, 2
-            do iCell = 1, nCellsAll
+         do iCell = 1, nCellsAll
+            vertNonLocalFluxAvg(:,iCell) = 0.0_RKIND
+            do k = 1, 2
                activeTracersAvg(k,:,iCell) = 0.0_RKIND
             end do
          end do
@@ -717,6 +718,7 @@ contains
             normalThicknessFluxAvg(:, iEdge) = normalThicknessFluxAvg(:, iEdge) + normalThicknessFlux(:, iEdge)
          end do
          do iCell = 1, nCellsAll
+            vertNonLocalFluxAvg(:,iCell) = vertNonLocalFluxAvg(:,iCell) + vertNonLocalFlux(1,:,iCell)
             do k = 1, nVertLevels
                activeTracersAvg(:,k,iCell) = activeTracersAvg(:,k,iCell) + activeTracers(:,k,iCell)
             end do
@@ -745,6 +747,7 @@ contains
             end do
          end do
          do iCell = 1, nCellsAll
+            vertNonLocalFluxAvg(:,iCell) = (1./nOffline)*vertNonLocalFluxAvg(:,iCell)
             do k = 1, nVertLevels
                activeTracersAvg(:,k,iCell) = (1./nOffline)*activeTracersAvg(:,k,iCell)
 !               vertAleTransportAvg(k,iCell) = 0.5_RKIND*(vertAleTransportAvg(k,iCell)+vertAleTransportTop(k,iCell))
@@ -1443,8 +1446,8 @@ contains
 !                                          tracerGroupTend, err)
                   if (offlinePassive) then
                      if (modulo(itimestep,config_offline_int)==0) then
-                        call ocn_tracer_nonlocalflux_tend(meshPool, &
-                                                vertNonLocalFlux, &
+                        call ocn_tracer_passive_nonlocalflux_tend(meshPool, &
+                                                vertNonLocalFluxAvg, &
                                                 tracerGroupSurfaceFlux, &
                                                 tracerGroupTend, err)
                      end if

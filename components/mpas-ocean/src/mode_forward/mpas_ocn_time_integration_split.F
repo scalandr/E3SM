@@ -2102,6 +2102,26 @@ module ocn_time_integration_split
 #endif
 
             call mpas_pool_begin_iteration(tracersPool)
+
+            if (itimestep==1) then
+               do iCell = 1, nCellsAll
+                  do k = minLevelCell(iCell), maxLevelCell(iCell)
+                     layerThicknessOld(k,iCell) = layerThicknessCur(k,iCell)
+                  end do
+               end do
+            end if
+            !if (mod(itimestep,2)==1) then
+            if (modulo(itimestep,config_offline_int)==1) then
+               do iCell = 1, nCellsAll
+                  vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
+               end do
+            end if
+            if (modulo(itimestep,config_offline_int)==2 .or. modulo(itimestep,config_offline_int)==3) then
+               do iCell = 1, nCellsAll
+                  vertAleTransportAvg(:,iCell) = vertAleTransportAvg(:,iCell) + vertAleTransportTop(:,iCell)
+               end do
+            end if
+
             do while (mpas_pool_get_next_member(tracersPool, &
                                                 groupItr) )
                if (groupItr%memberType == MPAS_POOL_FIELD) then
@@ -2168,25 +2188,25 @@ module ocn_time_integration_split
 #endif
                         else
                            nOffline = real(config_offline_int, RKIND)
-                           if (itimestep==1) then
-                              do iCell = 1, nCellsAll
-                                 do k = minLevelCell(iCell), maxLevelCell(iCell)
-                                    layerThicknessOld(k,iCell) = layerThicknessCur(k,iCell)
-                                 end do
-                              end do
-                           end if
-                           !if (mod(itimestep,2)==1) then
-                           if (modulo(itimestep,config_offline_int)==1) then
-                              do iCell = 1, nCellsAll
-                                 vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
-                              end do
-                           end if
-                           if (modulo(itimestep,config_offline_int)==2 .or. modulo(itimestep,config_offline_int)==3) then
-                              do iCell = 1, nCellsAll
-                                 vertAleTransportAvg(:,iCell) = vertAleTransportAvg(:,iCell) + vertAleTransportTop(:,iCell)
-                              end do
-                           end if
-                           !if (mod(itimestep,2)==0) then
+                           !if (itimestep==1) then
+                           !   do iCell = 1, nCellsAll
+                           !      do k = minLevelCell(iCell), maxLevelCell(iCell)
+                           !         layerThicknessOld(k,iCell) = layerThicknessCur(k,iCell)
+                           !      end do
+                           !   end do
+                           !end if
+                           !!if (mod(itimestep,2)==1) then
+                           !if (modulo(itimestep,config_offline_int)==1) then
+                           !   do iCell = 1, nCellsAll
+                           !      vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
+                           !   end do
+                           !end if
+                           !if (modulo(itimestep,config_offline_int)==2 .or. modulo(itimestep,config_offline_int)==3) then
+                           !   do iCell = 1, nCellsAll
+                           !      vertAleTransportAvg(:,iCell) = vertAleTransportAvg(:,iCell) + vertAleTransportTop(:,iCell)
+                           !   end do
+                           !end if
+                           !!if (mod(itimestep,2)==0) then
                            if (modulo(itimestep,config_offline_int)==0) then
                               print*, 'itimestep ', itimestep
                               counter1 = 0
@@ -2636,7 +2656,9 @@ module ocn_time_integration_split
 
       ! Clipping (CAAS)
       if (offlinePassive) then
-         call ocn_tracer_caas(statePool, tracersPool, err)
+         if (modulo(itimestep,config_offline_int)==0) then
+            call ocn_tracer_caas(statePool, tracersPool, err)
+         end if
       end if
 
       call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, &
