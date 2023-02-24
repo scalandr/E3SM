@@ -133,6 +133,10 @@ module ocn_diagnostics_variables
 
    real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportTop
 
+   real (kind=RKIND), dimension(:), pointer :: maxEcosys
+   real (kind=RKIND), dimension(:), pointer :: minEcosys
+   real (kind=RKIND), dimension(:,:), pointer :: maxLayers
+   real (kind=RKIND), dimension(:,:), pointer :: minLayers
    real (kind=RKIND), dimension(:,:), pointer :: normalThicknessFluxAvg
    real (kind=RKIND), dimension(:,:), pointer :: vertNonLocalFluxAvg
    real (kind=RKIND), dimension(:,:), pointer :: vertAleTransportAvg
@@ -490,6 +494,14 @@ contains
                    layerAvg1)
          call mpas_pool_get_array(diagnosticsPool, 'layerAvg2', &
                    layerAvg2)
+         call mpas_pool_get_array(diagnosticsPool, 'minLayers', &
+                   minLayers)
+         call mpas_pool_get_array(diagnosticsPool, 'maxLayers', &
+                   maxLayers)
+         call mpas_pool_get_array(diagnosticsPool, 'maxEcosys', &
+                   maxEcosys)
+         call mpas_pool_get_array(diagnosticsPool, 'minEcosys', &
+                   minEcosys)
          call mpas_pool_get_array(diagnosticsPool, 'normalThicknessFluxAvg', &
                    normalThicknessFluxAvg)
          call mpas_pool_get_array(diagnosticsPool, 'vertNonLocalFluxAvg', &
@@ -758,6 +770,10 @@ contains
          !$acc                   layerThicknessOld,               &
          !$acc                   layerAvg1,                       &
          !$acc                   layerAvg2,                       &
+         !$acc                   maxLayers,                       &
+         !$acc                   minLayers,                       &
+         !$acc                   maxEcosys,                       &
+         !$acc                   minEcosys,                       &
          !$acc                   normalThicknessFluxAvg,          &
          !$acc                   vertNonLocalFluxAvg,             &
          !$acc                   activeTracersAvg,                &
@@ -1014,6 +1030,10 @@ contains
          !$acc                   layerThicknessOld,               &
          !$acc                   layerAvg1,                       &
          !$acc                   layerAvg2,                       &
+         !$acc                   maxLayers,                       &
+         !$acc                   minLayers,                       &
+         !$acc                   maxEcosys,                       &
+         !$acc                   minEcosys,                       &
          !$acc                   normalThicknessFluxAvg,          &
          !$acc                   vertNonLocalFluxAvg,             &
          !$acc                   activeTracersAvg,                &
@@ -1228,6 +1248,10 @@ contains
                  layerThicknessOld,               &
                  layerAvg1,                       &
                  layerAvg2,                       &
+                 maxLayers,                       &
+                 minLayers,                       &
+                 maxEcosys,                       &
+                 minEcosys,                       &
                  normalThicknessFluxAvg,          &
                  vertNonLocalFluxAvg,             &
                  activeTracersAvg,                &

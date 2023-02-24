@@ -2159,6 +2159,20 @@ module ocn_time_integration_split
 !                     !$omp end parallel
 !#endif
 
+                     if (itimestep==1) then
+                        if (trim(groupItr % memberName) == 'ecosysTracers') then
+                           do iTracer = 1, 32
+                              do iCell = 1, nCellsAll
+                                 maxLayers(iTracer, iCell) = maxval(tracersGroupCur(iTracer,1:maxLevelCell(iCell),iCell))
+                                 minLayers(iTracer, iCell) = minval(tracersGroupCur(iTracer,1:maxLevelCell(iCell),iCell))
+                              end do
+                              maxEcosys(iTracer) = maxval(maxLayers(iTracer,:))
+                              minEcosys(iTracer) = minval(minLayers(iTracer,:))
+                              print*, iTracer, maxEcosys(iTracer), minEcosys(iTracer)
+                           end do
+                        end if
+                     end if
+
                      if (trim(groupItr % memberName) == 'activeTracers') then
                         !$omp parallel
                         !$omp do schedule(runtime) private(k)
@@ -2288,11 +2302,11 @@ module ocn_time_integration_split
                            end do
                         end do
                      elseif (trim(groupItr % memberName) == 'ecosysTracers') then
-                        do iTracer = 1, 1 !num_tracers
+                        do iTracer = 1, 32 !num_tracers
                            do iCell = 1, nCellsAll !nCellsSolve
                               do k=minLevelCell(iCell),maxLevelCell(iCell)
-                                 if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
-                                    print*, 'debug tr Aecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                                 if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
+                                    print*, 'debug tr Aecosys', maxEcosys(iTracer), minEcosys(iTracer), tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                                  end if
                               end do
                            end do
@@ -2643,10 +2657,10 @@ module ocn_time_integration_split
       if (config_use_ecosysTracers) then
          call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
          call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
-         do iTracer = 1, 1 !num_tracers
+         do iTracer = 1, 32 !num_tracers
             do iCell = 1, nCellsAll !nCellsSolve
                do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                  if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
                      print*, 'debug tr B1ecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                   end if
                end do
@@ -2681,10 +2695,10 @@ module ocn_time_integration_split
       if (config_use_ecosysTracers) then
          call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
          call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
-         do iTracer = 1, 1 !num_tracers
+         do iTracer = 1, 32 !num_tracers
             do iCell = 1, nCellsAll !nCellsSolve
                do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                  if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
                      print*, 'debug tr B2ecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                   end if
                end do
@@ -2756,10 +2770,10 @@ module ocn_time_integration_split
      if (config_use_ecosysTracers) then
          call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
          call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
-         do iTracer = 1, 1 !num_tracers
+         do iTracer = 1, 32 !num_tracers
             do iCell = 1, nCellsAll !nCellsSolve
                do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(abs(tracersGroupNew(iTracer, k, iCell))>5.0_RKIND) then
+                  if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
                      print*, 'debug tr Cecosys', tracersGroupNew(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
                   end if
                end do

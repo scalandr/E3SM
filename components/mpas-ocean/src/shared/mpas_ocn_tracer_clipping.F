@@ -230,7 +230,7 @@ contains
                end do
             elseif (m(iTracer)<1.0e-12 .or. m(iTracer)>-1.0e-12) then
                v(iTracer,:,:) = 0.0_RKIND
-               print*, iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
+               print*, 'DEBUG', iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
             end if
             do iCell = 1, nCellsHalo(1)
                do k=1, maxLevelCell(iCell)
@@ -254,21 +254,28 @@ contains
                      cell = cellsOnCell(i,iCell)
                      neighbors(i) = tracerGroupEcosysTracers(iTracer, k, cell)
                   end do
-                  !if (k>1) then
-                  !   neighbors(nEdgesOnCell(iCell)+1) =
-                  !   tracerGroupEcosysTracers(iTracer, k-1, iCell)
-                  !elseif (k<maxLevelCell(iCell)) then
-                  !   neighbors(nEdgesOnCell(iCell)+2) =
-                  !   tracerGroupEcosysTracers(iTracer, k+1, iCell)
-                  !end if
-                  boundUpper(iTracer,k,iCell) = maxval(neighbors(1:nEdgesOnCell(iCell)))
-                  boundLower(iTracer,k,iCell) = minval(neighbors(1:nEdgesOnCell(iCell)))
-                  !print*, boundLower(iTracer,k,iCell),
-                  !boundUpper(iTracer,k,iCell)
+                  if (k==1) then
+                     neighbors(nEdgesOnCell(iCell)+1) = tracerGroupEcosysTracers(iTracer, k+1, iCell)
+                     boundUpper(iTracer,k,iCell) = maxval(neighbors(1:nEdgesOnCell(iCell)+1))
+                     boundLower(iTracer,k,iCell) = max(1e-15, minval(neighbors(1:nEdgesOnCell(iCell)+1)))
+                  elseif (k==maxLevelCell(iCell)) then
+                     neighbors(nEdgesOnCell(iCell)+1) = tracerGroupEcosysTracers(iTracer, k-1, iCell)
+                     boundUpper(iTracer,k,iCell) = maxval(neighbors(1:nEdgesOnCell(iCell)+1))
+                     boundLower(iTracer,k,iCell) = max(1e-15, minval(neighbors(1:nEdgesOnCell(iCell)+1)))
+                  elseif (k>1 .and. k<maxLevelCell(iCell)) then
+                     neighbors(nEdgesOnCell(iCell)+1) = tracerGroupEcosysTracers(iTracer, k-1, iCell)
+                     neighbors(nEdgesOnCell(iCell)+2) = tracerGroupEcosysTracers(iTracer, k+1, iCell)
+                     boundUpper(iTracer,k,iCell) = maxval(neighbors(1:nEdgesOnCell(iCell)+2))
+                     boundLower(iTracer,k,iCell) = max(1e-15, minval(neighbors(1:nEdgesOnCell(iCell)+2)))
+                  end if
+                  !print*, boundLower(iTracer,k,iCell), boundUpper(iTracer,k,iCell)
                end do
                upperEco(iTracer,:,iCell) = boundUpper(iTracer,:,iCell) - tracerGroupEcosysTracers(iTracer, :, iCell)
                lowerEco(iTracer,:,iCell) = boundLower(iTracer,:,iCell) - tracerGroupEcosysTracers(iTracer, :, iCell)
             end do
+         end do
+         do k=1, maxLevelCell(1)
+            !print*, boundUpper(24,k,1), boundLower(24,k,1)
          end do
 
          do iTracer = 1, num_tracers_eco
