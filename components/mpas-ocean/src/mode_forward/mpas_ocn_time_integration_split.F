@@ -2103,23 +2103,25 @@ module ocn_time_integration_split
 
             call mpas_pool_begin_iteration(tracersPool)
 
-            if (itimestep==1) then
-               do iCell = 1, nCellsAll
-                  do k = minLevelCell(iCell), maxLevelCell(iCell)
-                     layerThicknessOld(k,iCell) = layerThicknessCur(k,iCell)
+            if (offlinePassive) then
+               if (itimestep==1) then
+                  do iCell = 1, nCellsAll
+                     do k = minLevelCell(iCell), maxLevelCell(iCell)
+                        layerThicknessOld(k,iCell) = layerThicknessCur(k,iCell)
+                     end do
                   end do
-               end do
-            end if
-            !if (mod(itimestep,2)==1) then
-            if (modulo(itimestep,config_offline_int)==1) then
-               do iCell = 1, nCellsAll
-                  vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
-               end do
-            end if
-            if (modulo(itimestep,config_offline_int)==2 .or. modulo(itimestep,config_offline_int)==3) then
-               do iCell = 1, nCellsAll
-                  vertAleTransportAvg(:,iCell) = vertAleTransportAvg(:,iCell) + vertAleTransportTop(:,iCell)
-               end do
+               end if
+               !if (mod(itimestep,2)==1) then
+               if (modulo(itimestep,config_offline_int)==1) then
+                  do iCell = 1, nCellsAll
+                     vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
+                  end do
+               end if
+               if (modulo(itimestep,config_offline_int)==2 .or. modulo(itimestep,config_offline_int)==3) then
+                  do iCell = 1, nCellsAll
+                     vertAleTransportAvg(:,iCell) = vertAleTransportAvg(:,iCell) + vertAleTransportTop(:,iCell)
+                  end do
+               end if
             end if
 
             do while (mpas_pool_get_next_member(tracersPool, &
@@ -2251,8 +2253,8 @@ module ocn_time_integration_split
                                  do k = minLevelCell(iCell), maxLevelCell(iCell)
                                     CFLz(k,iCell) = vertAleTransportTop(k,iCell)*(nOffline*dt)/restingThickness(k,iCell)
                                  end do
-                                 !if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<1.0_RKIND) then
-                                 if (iCell>1500) then
+                                 if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<1.0_RKIND) then
+                                 !if (iCell>1000) then
                                     counter1 = counter1 + 1
                                     !Compute vertical adv tendency
                                     do k = minLevelCell(iCell), maxLevelCell(iCell)
@@ -2302,15 +2304,17 @@ module ocn_time_integration_split
                            end do
                         end do
                      elseif (trim(groupItr % memberName) == 'ecosysTracers') then
-                        do iTracer = 1, 32 !num_tracers
-                           do iCell = 1, nCellsAll !nCellsSolve
-                              do k=minLevelCell(iCell),maxLevelCell(iCell)
-                                 if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
-                                    print*, 'debug tr Aecosys', maxEcosys(iTracer), minEcosys(iTracer), tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
-                                 end if
+                        if (offlinePassive) then
+                           do iTracer = 1, 32 !num_tracers
+                              do iCell = 1, nCellsAll !nCellsSolve
+                                 do k=minLevelCell(iCell),maxLevelCell(iCell)
+                                    if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
+                                       print*, 'debug tr Aecosys', maxEcosys(iTracer), minEcosys(iTracer), tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                                    end if
+                                 end do
                               end do
                            end do
-                        end do
+                        end if
                      end if
 
                      ! limit salinity in separate loop
@@ -2654,18 +2658,20 @@ module ocn_time_integration_split
             end do
          end do
       end if
-      if (config_use_ecosysTracers) then
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
-         do iTracer = 1, 32 !num_tracers
-            do iCell = 1, nCellsAll !nCellsSolve
-               do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
-                     print*, 'debug tr B1ecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
-                  end if
+      if (offlinePassive) then
+         if (config_use_ecosysTracers) then
+            call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
+            call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
+            do iTracer = 1, 32 !num_tracers
+               do iCell = 1, nCellsAll !nCellsSolve
+                  do k=minLevelCell(iCell),maxLevelCell(iCell)
+                     if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
+                        print*, 'debug tr B1ecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                     end if
+                  end do
                end do
             end do
-         end do
+         end if
       end if
 
       ! Clipping (CAAS)
@@ -2692,18 +2698,20 @@ module ocn_time_integration_split
             end do
          end do
       end if
-      if (config_use_ecosysTracers) then
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
-         do iTracer = 1, 32 !num_tracers
-            do iCell = 1, nCellsAll !nCellsSolve
-               do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
-                     print*, 'debug tr B2ecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
-                  end if
+      if (offlinePassive) then
+         if (config_use_ecosysTracers) then
+            call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
+            call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
+            do iTracer = 1, 32 !num_tracers
+               do iCell = 1, nCellsAll !nCellsSolve
+                  do k=minLevelCell(iCell),maxLevelCell(iCell)
+                     if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
+                        print*, 'debug tr B2ecosys', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                     end if
+                  end do
                end do
             end do
-         end do
+         end if
       end if
 
       ! Update halo on u and tracers, which were just updated for
@@ -2767,18 +2775,20 @@ module ocn_time_integration_split
             end do
          end do
      end if
-     if (config_use_ecosysTracers) then
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
-         call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
-         do iTracer = 1, 32 !num_tracers
-            do iCell = 1, nCellsAll !nCellsSolve
-               do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
-                     print*, 'debug tr Cecosys', tracersGroupNew(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
-                  end if
+     if (offlinePassive) then
+        if (config_use_ecosysTracers) then
+            call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupCur, 1)
+            call mpas_pool_get_array(tracersPool, 'ecosysTracers', tracersGroupNew, 2)
+            do iTracer = 1, 32 !num_tracers
+               do iCell = 1, nCellsAll !nCellsSolve
+                  do k=minLevelCell(iCell),maxLevelCell(iCell)
+                     if(tracersGroupNew(iTracer, k, iCell)>maxEcosys(iTracer) .or. tracersGroupNew(iTracer, k, iCell)<minEcosys(iTracer)) then
+                        print*, 'debug tr Cecosys', tracersGroupNew(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                     end if
+                  end do
                end do
             end do
-         end do
+         end if
       end if
 
       call mpas_timer_stop("se implicit vert mix")

@@ -212,7 +212,7 @@ contains
                      v_mod(iTracer) = v_mod(iTracer) + v(iTracer,k,iCell)
                   end do
                end do
-               print*, 'DEBUG', iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
+!               print*, 'DEBUG', iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
                do iCell = 1, nCellsHalo(1)
                   v(iTracer,:,iCell) = v(iTracer,:,iCell)/v_mod(iTracer)
                end do
@@ -224,13 +224,13 @@ contains
                      v_mod(iTracer) = v_mod(iTracer) + v(iTracer,k,iCell)
                   end do
                end do
-               print*, 'DEBUG', iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
+!               print*, 'DEBUG', iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
                do iCell = 1, nCellsHalo(1)
                   v(iTracer,:,iCell) = v(iTracer,:,iCell)/v_mod(iTracer)
                end do
             elseif (m(iTracer)<1.0e-12 .or. m(iTracer)>-1.0e-12) then
                v(iTracer,:,:) = 0.0_RKIND
-               print*, 'DEBUG', iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
+!               print*, 'DEBUG', iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
             end if
             do iCell = 1, nCellsHalo(1)
                do k=1, maxLevelCell(iCell)
@@ -317,7 +317,7 @@ contains
                      v_mod(iTracer) = v_mod(iTracer) + v(iTracer,k,iCell)
                   end do
                end do
-               print*, iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
+!               print*, iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
                do iCell = 1, nCellsAll
                   v(iTracer,:,iCell) = v(iTracer,:,iCell)/v_mod(iTracer)
                end do
@@ -329,7 +329,7 @@ contains
                      v_mod(iTracer) = v_mod(iTracer) + v(iTracer,k,iCell)
                   end do
                end do
-               print*, iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
+!               print*, iTracer, x_bar_mod(iTracer), b(iTracer), m(iTracer), v_mod(iTracer)
                do iCell = 1, nCellsAll
                   v(iTracer,:,iCell) = v(iTracer,:,iCell)/v_mod(iTracer)
                end do
