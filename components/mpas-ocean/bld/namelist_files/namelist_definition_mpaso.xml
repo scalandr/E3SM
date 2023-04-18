@@ -200,6 +200,22 @@ Valid values: 'split_explicit', 'RK4', 'unsplit_explicit', 'split_implicit'
 Default: Defined in namelist_defaults.xml
 </entry>
 
+<entry id="offlinePassive" type="logical"
+        category="time_integration" group="time_integration">
+Offline option for passive tracers.
+
+Valid values: .true. or .false.
+Default: Defined in namelist_defaults.xml
+</entry>
+
+<entry id="config_offline_int" type="integer"
+        category="time_integration" group="time_integration">
+Number of baroclinic staps after which passive tracers are solved for.
+
+Valid values: any integer between 0 and 8
+Default: Defined in namelist_defaults.xml
+</entry>
+
 
 <!-- hmix -->
 
@@ -1688,6 +1704,13 @@ Slope limiter for the vertical remap advection scheme.
 Valid values: 'none','monotonic','weno'
 Default: Defined in namelist_defaults.xml
 </entry>
+
+<entry id="config_use_tracer_clipping" type="logical"
+        category="advection" group="advection">
+Option for clipping passive tracers to achive monotonicity when offlinePassive is true.
+
+Valid values: .true. or .false.
+Default: Defined in namelist_defaults.xml
 
 
 <!-- bottom_drag -->

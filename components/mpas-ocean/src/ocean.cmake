@@ -27,6 +27,7 @@ list(APPEND RAW_SOURCES
   core_ocean/mode_forward/mpas_ocn_time_integration_rk4.F
   core_ocean/mode_forward/mpas_ocn_time_integration_split.F
   core_ocean/mode_forward/mpas_ocn_time_integration_si.F
+  core_ocean/mode_forward/mpas_ocn_time_integration_ETD.F
 
   core_ocean/mode_analysis/mpas_ocn_analysis_mode.F
 
@@ -104,6 +105,8 @@ list(APPEND RAW_SOURCES
   core_ocean/shared/mpas_ocn_time_varying_forcing.F
   core_ocean/shared/mpas_ocn_wetting_drying.F
   core_ocean/shared/mpas_ocn_vel_tidal_potential.F
+  core_ocean/shared/mpas_ocn_tracer_clipping.F
+  core_ocean/shared/mpas_ocn_tracer_debug.F
 )
 
 set(OCEAN_DRIVER

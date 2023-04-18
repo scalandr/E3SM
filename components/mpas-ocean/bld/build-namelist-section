@@ -45,6 +45,8 @@ add_default($nl, 'config_proc_decomp_file_prefix');
 
 add_default($nl, 'config_dt');
 add_default($nl, 'config_time_integrator');
+add_default($nl, 'offlinePassive');
+add_default($nl, 'config_offline_int');
 
 ########################
 # Namelist group: hmix #
@@ -319,6 +321,7 @@ add_default($nl, 'config_horiz_tracer_adv_order');
 add_default($nl, 'config_coef_3rd_order');
 add_default($nl, 'config_flux_limiter');
 add_default($nl, 'config_remap_limiter');
+add_default($nl, 'config_use_tracer_clipping');
 
 ###############################
 # Namelist group: bottom_drag #

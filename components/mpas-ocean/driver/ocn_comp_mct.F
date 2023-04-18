@@ -1052,7 +1052,7 @@ contains
 
          if (debugOn) call mpas_log_write('   Performing forward update')
          call mpas_timer_start("time integration", .false.)
-         call ocn_timestep(domain, dt, timeStamp)
+         call ocn_timestep(domain, dt, timeStamp, itimestep)
          call mpas_timer_stop("time integration")
          if (debugOn) call mpas_log_write('   Finished performing forward update')
 

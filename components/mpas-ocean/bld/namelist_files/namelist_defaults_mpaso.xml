@@ -47,6 +47,8 @@
 <config_dt ocn_grid="SOwISC12to60E2r4">'00:10:00'</config_dt>
 <config_dt ocn_grid="ECwISC30to60E2r1">'00:30:00'</config_dt>
 <config_time_integrator>'split_explicit'</config_time_integrator>
+<offlinePassive>.true.</offlinePassive>
+<config_offline_int>4</config_offline_int>
 
 <!-- hmix -->
 <config_hmix_scaleWithMesh ocn_grid="oQU480">.false.</config_hmix_scaleWithMesh>
@@ -357,6 +359,7 @@
 <config_coef_3rd_order>0.25</config_coef_3rd_order>
 <config_flux_limiter>'monotonic'</config_flux_limiter>
 <config_remap_limiter>'monotonic'</config_remap_limiter>
+<config_use_tracer_clipping>.true.</config_use_tracer_clipping>
 
 <!-- bottom_drag -->
 <config_use_implicit_bottom_drag>.true.</config_use_implicit_bottom_drag>
