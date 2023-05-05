@@ -284,7 +284,8 @@ module ocn_time_integration_split
       !Vertical Mesh Pool
       real (kind=RKIND), dimension(:,:), pointer :: restingThickness
 
-      real (kind=RKIND), dimension(:,:), allocatable :: thickAdjust, CFLz
+      real (kind=RKIND), dimension(:,:), allocatable :: thickAdjust, CFLz, CFLx
+      real (kind=RKIND), dimension(:), allocatable :: maxCFLz, maxCFLx
 
       ! These are public variables used from the diagnostics module
       ! indexSurfaceVelocityZonal, indexSurfaceVelocityMeridional
@@ -411,6 +412,9 @@ module ocn_time_integration_split
 
       allocate(thickAdjust(nVertLevels, nCellsAll))
       allocate(CFLz(nVertLevels, nCellsAll))
+      allocate(CFLx(nVertLevels, nCellsAll))
+      allocate(maxCFLz(nCellsAll))
+      allocate(maxCFLx(nCellsAll))
 
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(normalVelocityCur, normalBarotropicVelocityCur, &
@@ -2117,7 +2121,8 @@ module ocn_time_integration_split
                      vertAleTransportAvg(:,iCell) = vertAleTransportTop(:,iCell)
                   end do
                end if
-               if (modulo(itimestep,config_offline_int)==2 .or. modulo(itimestep,config_offline_int)==3) then
+               !if (modulo(itimestep,config_offline_int)==2 .or. modulo(itimestep,config_offline_int)==3) then
+               if (modulo(itimestep,config_offline_int)>1) then
                   do iCell = 1, nCellsAll
                      vertAleTransportAvg(:,iCell) = vertAleTransportAvg(:,iCell) + vertAleTransportTop(:,iCell)
                   end do
@@ -2251,9 +2256,13 @@ module ocn_time_integration_split
 !                              !$omp do schedule(runtime) private(k)
                               do iCell = 1, nCellsOwned
                                  do k = minLevelCell(iCell), maxLevelCell(iCell)
-                                    CFLz(k,iCell) = vertAleTransportTop(k,iCell)*(nOffline*dt)/restingThickness(k,iCell)
+                                    CFLz(k,iCell) = abs(vertAleTransportAvg(k,iCell))*(nOffline*dt)/layerThicknessNew(k,iCell)!restingThickness(k,iCell)
+                                    CFLx(k,iCell) = sqrt(2.0_RKIND*kineticEnergyCell(k,iCell))*(nOffline*dt)/sqrt(areaCell(iCell))
                                  end do
+                                 maxCFLz(iCell) = maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))
+                                 maxCFLx(iCell) = maxval(CFLx(minLevelCell(iCell):maxLevelCell(iCell),iCell))
                                  if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<1.0_RKIND) then
+                                 !if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<0.5_RKIND) then
                                  !if (iCell>1000) then
                                     counter1 = counter1 + 1
                                     !Compute vertical adv tendency
@@ -2283,6 +2292,8 @@ module ocn_time_integration_split
                               !! Halo update on all tracer groups
                               !call mpas_dmpar_field_halo_exch(domain, 'debugTracers', timeLevel=2)
 
+                              print*, 'max CFLz ', maxval(maxCFLz(1:nCellsOwned))
+                              print*, 'max CFLx ', maxval(maxCFLx(1:nCellsOwned))
                               print*, '# explicit columns = ', counter1
                               print*, '# implicit columns = ', counter2
                               !tridiag solver for vertical diffusion and vertical advection
@@ -3001,7 +3012,8 @@ module ocn_time_integration_split
       call mpas_timer_stop('se fini')
       call mpas_timer_stop("se timestep")
 
-      deallocate(thickAdjust, CFLz)
+      deallocate(thickAdjust, CFLz, CFLx)
+      deallocate(maxCFLz, maxCFLx)
 
    end subroutine ocn_time_integrator_split!}}}
 

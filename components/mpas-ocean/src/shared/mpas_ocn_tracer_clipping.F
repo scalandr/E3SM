@@ -137,7 +137,8 @@ contains
 
       !num_tracers = size(tracerGroup, dim=1)
       num_tracers = 2
-      num_tracers_eco = size(tracerGroupEcosysTracers, dim=1)
+      !num_tracers_eco = size(tracerGroupEcosysTracers, dim=1)
+      num_tracers_eco = 3
 
       allocate(q_g(num_tracers_eco))
       allocate(q_bar_star(num_tracers_eco))
