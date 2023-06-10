@@ -136,7 +136,7 @@ contains
       call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, 2)
 
       !num_tracers = size(tracerGroup, dim=1)
-      num_tracers = 2
+      num_tracers = 3
       !num_tracers_eco = size(tracerGroupEcosysTracers, dim=1)
       num_tracers_eco = 3
 
@@ -163,15 +163,18 @@ contains
 
       if (config_use_debugTracers) then
 
-         do iTracer = 1, num_tracers
+         do iTracer = 1, 2
             do iCell = 1, nCellsHalo(1)
                !upper(iTracer,:,iCell) = 1.000001_RKIND - tracerGroup(iTracer, :, iCell)
                !lower(iTracer,:,iCell) = 0.999999_RKIND - tracerGroup(iTracer, :, iCell)
                upper(iTracer,:,iCell) = 1.000001_RKIND - tracerGroup(iTracer, :, iCell)
                lower(iTracer,:,iCell) = -0.000001_RKIND - tracerGroup(iTracer, :, iCell)
             end do
-            !upper(iTracer,:,:) = 0.00002_RKIND
-            !lower(iTracer,:,:) = -0.00002_RKIND
+         end do
+
+         do iCell = 1, nCellsHalo(1)
+            upper(3,:,iCell) = 1.000001_RKIND - tracerGroup(3, :, iCell)
+            lower(3,:,iCell) = 0.999999_RKIND - tracerGroup(3, :, iCell)
          end do
          
          do iTracer = 1, num_tracers

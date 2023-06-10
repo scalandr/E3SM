@@ -2229,7 +2229,7 @@ module ocn_time_integration_split
                            !end if
                            !!if (mod(itimestep,2)==0) then
                            if (modulo(itimestep,config_offline_int)==0) then
-                              print*, 'itimestep ', itimestep
+                              !print*, 'itimestep ', itimestep
                               counter1 = 0
                               counter2 = 0
                               !$omp parallel
@@ -2251,7 +2251,6 @@ module ocn_time_integration_split
 
 !                              call ocn_time_integrator_ETD(2.0_RKIND*dt, vertAleTransportAvg, layerThicknessOld, layerThicknessNew, tracersGroupCur, tracersGroupNew, tracersGroupTend)
 
-                              print*, 'nCellsOwned = ', nCellsOwned
 !                              !$omp parallel
 !                              !$omp do schedule(runtime) private(k)
                               do iCell = 1, nCellsOwned
@@ -2261,8 +2260,8 @@ module ocn_time_integration_split
                                  end do
                                  maxCFLz(iCell) = maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))
                                  maxCFLx(iCell) = maxval(CFLx(minLevelCell(iCell):maxLevelCell(iCell),iCell))
-                                 if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<1.0_RKIND) then
-                                 !if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<0.5_RKIND) then
+                                 !if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<1.0_RKIND) then
+                                 if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<0.8_RKIND) then
                                  !if (iCell>1000) then
                                     counter1 = counter1 + 1
                                     !Compute vertical adv tendency
@@ -2270,7 +2269,7 @@ module ocn_time_integration_split
                                        tracersGroupTend(:,k,iCell) = 0.0_RKIND
                                     end do
                                     call ocn_tracer_vert_adv_std_tend(tracersGroupCur, vertAleTransportAvg, layerThicknessOld, &
-                                       2.0_RKIND*dt, tracersGroupTend, iCell)
+                                       nOffline*dt, tracersGroupTend, iCell)
                                     !Forward Euler step
                                     do k = minLevelCell(iCell), maxLevelCell(iCell)
                                        tracersGroupNew(:,k,iCell) = tracersGroupNew(:,k,iCell) + (nOffline*dt &
@@ -2292,10 +2291,14 @@ module ocn_time_integration_split
                               !! Halo update on all tracer groups
                               !call mpas_dmpar_field_halo_exch(domain, 'debugTracers', timeLevel=2)
 
-                              print*, 'max CFLz ', maxval(maxCFLz(1:nCellsOwned))
-                              print*, 'max CFLx ', maxval(maxCFLx(1:nCellsOwned))
-                              print*, '# explicit columns = ', counter1
-                              print*, '# implicit columns = ', counter2
+                              if (counter2>0) then
+                                 print*, 'itimestep ', itimestep
+                                 print*, 'nCellsOwned = ', nCellsOwned
+                                 print*, 'max CFLz ', maxval(maxCFLz(1:nCellsOwned))
+                                 print*, 'max CFLx ', maxval(maxCFLx(1:nCellsOwned))
+                                 print*, '# explicit columns = ', counter1
+                                 print*, '# implicit columns = ', counter2
+                              end if
                               !tridiag solver for vertical diffusion and vertical advection
                               call ocn_vmix_vertAdv_implicit_tracersOnly(nOffline*dt, itimestep, meshPool, &
                                             statePool, forcingPool, scratchPool, err, 2)
@@ -2304,9 +2307,8 @@ module ocn_time_integration_split
                      end if
 
                      if (trim(groupItr % memberName) == 'debugTracers') then
-                     !if (trim(groupItr % memberName) == 'ecosysTracers') then
                         do iTracer = 1, 3 !num_tracers
-                           do iCell = 1, nCellsAll !nCellsSolve
+                           do iCell = 1, nCellsOwned !nCellsAll
                               do k=minLevelCell(iCell),maxLevelCell(iCell)
                                  if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
                                     print*, 'debug tr A', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
@@ -2660,12 +2662,12 @@ module ocn_time_integration_split
          call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupCur, 1)
          call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupNew, 2)
          do iTracer = 1, 3 !num_tracers
-            do iCell = 1, nCellsAll !nCellsSolve
-               do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
-                     print*, 'debug tr B1', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
-                  end if
-               end do
+            do iCell = 1, nCellsOwned !nCellsAll
+               !do k=minLevelCell(iCell),maxLevelCell(iCell)
+               !   if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
+               !      print*, 'debug tr B1', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+               !   end if
+               !end do
             end do
          end do
       end if
@@ -2700,12 +2702,12 @@ module ocn_time_integration_split
          call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupCur, 1)
          call mpas_pool_get_array(tracersPool, 'debugTracers', tracersGroupNew, 2)
          do iTracer = 1, 3 !num_tracers
-            do iCell = 1, nCellsAll !nCellsSolve
-               do k=minLevelCell(iCell),maxLevelCell(iCell)
-                  if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
-                     print*, 'debug tr B2', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
-                  end if
-               end do
+            do iCell = 1, nCellsOwned !nCellsAll
+               !do k=minLevelCell(iCell),maxLevelCell(iCell)
+               !   if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
+               !      print*, 'debug tr B2', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+               !   end if
+               !end do
             end do
          end do
       end if
