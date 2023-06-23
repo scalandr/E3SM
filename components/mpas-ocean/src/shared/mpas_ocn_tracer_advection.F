@@ -161,14 +161,17 @@ module ocn_tracer_advection
 
       ! call specific advection routine based on choice of monotonicity
 !      if (monotonicOn) then
-!         call ocn_tracer_hor_adv_mono_tend(tend, tracers, layerThickness,  &
-!                                             normalThicknessFlux, dt,      &
-!                                             computeBudgets)
+         call ocn_tracer_hor_adv_mono_tend(tend, tracers, layerThickness,  &
+                                             normalThicknessFlux, dt,      &
+                                             computeBudgets)
 !      else
-         call ocn_tracer_hor_adv_std_tend(tracers, normalThicknessFlux, &
-                                      layerThickness, tend)
+!         call ocn_tracer_hor_adv_std_tend(tracers, normalThicknessFlux, &
+!                                      layerThickness, tend)
          !call ocn_tracer_advection_std_tend(tracers, normalThicknessFlux, &
          !         w, layerThickness, dt, tend)
+         !call ocn_tracer_advection_mono_tend(tend, tracers, layerThickness,    &
+         !                                    normalThicknessFlux, w, dt,       &
+         !                                    computeBudgets)
 !      end if
 
       call mpas_timer_stop("passive tracer horiz adv")

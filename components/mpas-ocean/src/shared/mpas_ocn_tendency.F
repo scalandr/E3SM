@@ -671,7 +671,8 @@ contains
       allocate(normalThicknessFlux(nVertLevels, nEdgesAll+1))
 
       !if (mod(itimestep,2)==1 .and. firstBaroclinicStep) then
-      if (modulo(itimestep,config_offline_int)==1 .and. firstBaroclinicStep) then
+      if ((modulo(itimestep,config_offline_int)==1 .and. firstBaroclinicStep) .or. &
+          (config_offline_int==1 .and. firstBaroclinicStep)) then
          do iEdge = 1, nEdgesAll
             normalThicknessFluxAvg(:, iEdge) = 0.0_RKIND
          end do
@@ -1229,7 +1230,8 @@ contains
             if (offlinePassive) then
                if (modulo(itimestep,config_offline_int)==0) then
                   call ocn_passive_tracer_advection_tend(tracerGroup, normalThicknessFluxAvg, &
-                     vertAleTransportAvg, layerThickness, tracerGroupTend, nOffline*dt, computeBudgets)
+                     !vertAleTransportAvg, layerThickness, tracerGroupTend, nOffline*dt, computeBudgets)
+                     vertAleTransportTop, layerThickness, tracerGroupTend, nOffline*dt, computeBudgets)
                end if
             else
                call ocn_tracer_advection_tend(tracerGroup, normalThicknessFlux, vertAleTransportTop, layerThickness, &

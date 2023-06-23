@@ -39,6 +39,7 @@ module ocn_time_integration_split
    use ocn_gm
    use ocn_submesoscale_eddies
    use ocn_tracer_advection_std
+   use ocn_tracer_advection_mono
    use ocn_tracer_clipping
 
    use ocn_equation_of_state
@@ -2115,6 +2116,11 @@ module ocn_time_integration_split
                      end do
                   end do
                end if
+               if (config_offline_int==1) then
+                  do iCell = 1, nCellsAll
+                     vertAleTransportAvg(:,iCell) = 0.0_RKIND
+                  end do
+               end if
                !if (mod(itimestep,2)==1) then
                if (modulo(itimestep,config_offline_int)==1) then
                   do iCell = 1, nCellsAll
@@ -2244,7 +2250,7 @@ module ocn_time_integration_split
                                                                !* tracersGroupTend(:,k,iCell)) / thickAdjust(k,iCell)
                                     !layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
                                  end do
-                                 vertAleTransportAvg(maxLevelCell(iCell)+1, iCell) = 0.25_RKIND*(vertAleTransportAvg(maxLevelCell(iCell)+1, iCell)+vertAleTransportTop(maxLevelCell(iCell)+1,iCell))
+                                 vertAleTransportAvg(maxLevelCell(iCell)+1, iCell) = (1./nOffline)*(vertAleTransportAvg(maxLevelCell(iCell)+1, iCell)+vertAleTransportTop(maxLevelCell(iCell)+1,iCell))
                               end do
                               !$omp end do
                               !$omp end parallel
@@ -2253,40 +2259,58 @@ module ocn_time_integration_split
 
 !                              !$omp parallel
 !                              !$omp do schedule(runtime) private(k)
-                              do iCell = 1, nCellsOwned
+                              !do iCell = 1, nCellsAll
+                              !   do k = minLevelCell(iCell), maxLevelCell(iCell)
+                              !      CFLz(k,iCell) = abs(vertAleTransportAvg(k,iCell))*(nOffline*dt)/layerThicknessNew(k,iCell)!restingThickness(k,iCell)
+                              !      CFLx(k,iCell) = sqrt(2.0_RKIND*kineticEnergyCell(k,iCell))*(nOffline*dt)/sqrt(areaCell(iCell))
+                              !   end do
+                              !   maxCFLz(iCell) = maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))
+                              !   maxCFLx(iCell) = maxval(CFLx(minLevelCell(iCell):maxLevelCell(iCell),iCell))
+                              !   !if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<1.0_RKIND) then
+                              !   if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<0.8_RKIND) then
+                              !   !if (iCell>1000) then
+                              !      counter1 = counter1 + 1
+                              !      !Compute vertical adv tendency
+                              !      do k = minLevelCell(iCell), maxLevelCell(iCell)
+                              !         tracersGroupTend(:,k,iCell) = 0.0_RKIND
+                              !      end do
+                              !      call ocn_tracer_vert_adv_std_tend(tracersGroupCur, vertAleTransportAvg, layerThicknessOld, &
+                              !         nOffline*dt, tracersGroupTend, iCell)
+                              !      !Forward Euler step
+                              !      do k = minLevelCell(iCell), maxLevelCell(iCell)
+                              !         tracersGroupNew(:,k,iCell) = tracersGroupNew(:,k,iCell) + (nOffline*dt &
+                              !                                    * tracersGroupTend(:,k,iCell)) / layerThicknessNew(k,iCell)
+                              !      end do
+                              !   else
+                              !      counter2 = counter2 + 1
+                              !      !print*, iCell
+                              !      call ocn_tracer_vertAdv_tend_implicit_column(nOffline*dt, vertAleTransportAvg, &
+                              !         layerThicknessNew, tracersGroupNew, iCell, err)
+                              !   end if
+                              !   do k = minLevelCell(iCell), maxLevelCell(iCell)
+                              !      layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
+                              !   end do
+                              !end do
+!                              !$omp end do
+!                              !$omp end parallel
+
+                              do iCell = 1, nCellsAll
                                  do k = minLevelCell(iCell), maxLevelCell(iCell)
-                                    CFLz(k,iCell) = abs(vertAleTransportAvg(k,iCell))*(nOffline*dt)/layerThicknessNew(k,iCell)!restingThickness(k,iCell)
-                                    CFLx(k,iCell) = sqrt(2.0_RKIND*kineticEnergyCell(k,iCell))*(nOffline*dt)/sqrt(areaCell(iCell))
+                                    tracersGroupTend(:,k,iCell) = 0.0_RKIND
+                                  end do
+                              end do
+                              call ocn_tracer_vert_adv_mono_tend(tracersGroupTend, tracersGroupCur, layerThicknessOld, &
+                                        normalThicknessFluxAvg, vertAleTransportAvg, nOffline*dt, .false.) 
+                              !Forward Euler step
+                              do iCell = 1, nCellsAll
+                                 do k = minLevelCell(iCell), maxLevelCell(iCell)
+                                    tracersGroupNew(:,k,iCell) = tracersGroupNew(:,k,iCell) + (nOffline*dt &
+                                                               * tracersGroupTend(:,k,iCell)) / layerThicknessNew(k,iCell)
                                  end do
-                                 maxCFLz(iCell) = maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))
-                                 maxCFLx(iCell) = maxval(CFLx(minLevelCell(iCell):maxLevelCell(iCell),iCell))
-                                 !if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<1.0_RKIND) then
-                                 if (maxval(CFLz(minLevelCell(iCell):maxLevelCell(iCell),iCell))<0.8_RKIND) then
-                                 !if (iCell>1000) then
-                                    counter1 = counter1 + 1
-                                    !Compute vertical adv tendency
-                                    do k = minLevelCell(iCell), maxLevelCell(iCell)
-                                       tracersGroupTend(:,k,iCell) = 0.0_RKIND
-                                    end do
-                                    call ocn_tracer_vert_adv_std_tend(tracersGroupCur, vertAleTransportAvg, layerThicknessOld, &
-                                       nOffline*dt, tracersGroupTend, iCell)
-                                    !Forward Euler step
-                                    do k = minLevelCell(iCell), maxLevelCell(iCell)
-                                       tracersGroupNew(:,k,iCell) = tracersGroupNew(:,k,iCell) + (nOffline*dt &
-                                                                  * tracersGroupTend(:,k,iCell)) / layerThicknessNew(k,iCell)
-                                    end do
-                                 else
-                                    counter2 = counter2 + 1
-                                    !print*, iCell
-                                    call ocn_tracer_vertAdv_tend_implicit_column(nOffline*dt, vertAleTransportAvg, &
-                                       layerThicknessNew, tracersGroupNew, iCell, err)
-                                 end if
                                  do k = minLevelCell(iCell), maxLevelCell(iCell)
                                     layerThicknessOld(k,iCell) = layerThicknessNew(k,iCell)
                                  end do
                               end do
-!                              !$omp end do
-!                              !$omp end parallel
 
                               !! Halo update on all tracer groups
                               !call mpas_dmpar_field_halo_exch(domain, 'debugTracers', timeLevel=2)
@@ -2308,13 +2332,13 @@ module ocn_time_integration_split
 
                      if (trim(groupItr % memberName) == 'debugTracers') then
                         do iTracer = 1, 3 !num_tracers
-                           do iCell = 1, nCellsOwned !nCellsAll
-                              do k=minLevelCell(iCell),maxLevelCell(iCell)
-                                 if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
-                                    print*, 'debug tr A', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
-                                 end if
-                              end do
-                           end do
+                           !do iCell = 1, nCellsOwned !nCellsAll
+                           !   do k=minLevelCell(iCell),maxLevelCell(iCell)
+                           !      if(abs(tracersGroupNew(iTracer, k, iCell))>1.2_RKIND) then
+                           !         print*, 'debug tr A', tracersGroupNew(iTracer, k, iCell), tracersGroupCur(iTracer, k, iCell), iTracer, k, maxLevelCell(iCell), iCell
+                           !      end if
+                           !   end do
+                           !end do
                         end do
                      elseif (trim(groupItr % memberName) == 'ecosysTracers') then
                         if (offlinePassive) then
