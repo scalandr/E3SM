@@ -166,11 +166,9 @@ contains
          do iTracer = 1, 2
             do iCell = 1, nCellsHalo(1)
                !upper(iTracer,:,iCell) = 1.000001_RKIND - tracerGroup(iTracer, :, iCell)
-               !lower(iTracer,:,iCell) = 0.999999_RKIND - tracerGroup(iTracer, :, iCell)
-               upper(iTracer,:,iCell) = 1.000001_RKIND - tracerGroup(iTracer, :, iCell)
-               lower(iTracer,:,iCell) = -0.000001_RKIND - tracerGroup(iTracer, :, iCell)
-               !upper(iTracer,:,iCell) = 1.001_RKIND - tracerGroup(iTracer, :, iCell) 1.5
-               !lower(iTracer,:,iCell) = -0.001_RKIND - tracerGroup(iTracer, :, iCell) -0.5
+               !lower(iTracer,:,iCell) = -0.000001_RKIND - tracerGroup(iTracer, :, iCell)
+               upper(iTracer,:,iCell) = 1.5_RKIND - tracerGroup(iTracer, :, iCell) !1.001_RKIND
+               lower(iTracer,:,iCell) = -0.5_RKIND - tracerGroup(iTracer, :, iCell) !-0.001_RKIND
             end do
          end do
 
