@@ -167,8 +167,10 @@ contains
             do iCell = 1, nCellsHalo(1)
                !upper(iTracer,:,iCell) = 1.000001_RKIND - tracerGroup(iTracer, :, iCell)
                !lower(iTracer,:,iCell) = -0.000001_RKIND - tracerGroup(iTracer, :, iCell)
-               upper(iTracer,:,iCell) = 1.5_RKIND - tracerGroup(iTracer, :, iCell) !1.001_RKIND
-               lower(iTracer,:,iCell) = -0.5_RKIND - tracerGroup(iTracer, :, iCell) !-0.001_RKIND
+               upper(iTracer,:,iCell) = (1.5_RKIND - tracerGroup(iTracer, :, iCell)) &
+                  * layerThickness(:,iCell) * areaCell(iCell) !1.001_RKIND
+               lower(iTracer,:,iCell) = (-0.5_RKIND - tracerGroup(iTracer, :, iCell)) &
+                  * layerThickness(:,iCell) * areaCell(iCell) !-0.001_RKIND
             end do
          end do
 
@@ -193,15 +195,12 @@ contains
             end do
             do iCell = 1, nCellsHalo(1)
                do k=1, maxLevelCell(iCell)
-                  !q_g(iTracer) = q_g(iTracer) + tracerGroup(iTracer, k, iCell) &
-                  !   * layerThickness(k,iCell) * areaCell(iCell)
-                  !if(abs(tracerGroupOld(iTracer, k, iCell))>2.0_RKIND) print*, &
-                  !   'old ', tracerGroupOld(iTracer, k, iCell), iTracer, k, iCell
-                  q_g(iTracer) = q_g(iTracer) + tracerGroupOld(iTracer, k, iCell)
-                  !if(abs(tracerGroup(iTracer, k, iCell))>2.0_RKIND) print*, &
-                  !   'new ', tracerGroup(iTracer, k, iCell), iTracer, k, iCell
+                  q_g(iTracer) = q_g(iTracer) + tracerGroupOld(iTracer, k, iCell) &
+                     * layerThickness(k,iCell) * areaCell(iCell)
+                  !q_g(iTracer) = q_g(iTracer) + tracerGroupOld(iTracer, k, iCell)
                   q_bar_star(iTracer) = q_bar_star(iTracer) + &
-                     tracerGroup(iTracer, k, iCell)
+                     tracerGroup(iTracer, k, iCell) &
+                     * layerThickness(k,iCell) * areaCell(iCell)
                end do
             end do
             b(iTracer) = q_g(iTracer) - q_bar_star(iTracer)
@@ -239,7 +238,8 @@ contains
             do iCell = 1, nCellsHalo(1)
                do k=1, maxLevelCell(iCell)
                   tracerGroup(iTracer,k,iCell) = tracerGroup(iTracer,k,iCell) + &
-                     x_bar(iTracer,k,iCell) + m(iTracer)*v(iTracer,k,iCell)
+                  !   x_bar(iTracer,k,iCell) + m(iTracer)*v(iTracer,k,iCell)
+                     (x_bar(iTracer,k,iCell) + m(iTracer)*v(iTracer,k,iCell))/(layerThickness(k,iCell) * areaCell(iCell))
                   if (abs(tracerGroup(iTracer,k,iCell))>2.0_RKIND) print*, &
                      tracerGroup(iTracer,k,iCell), iTracer, k, iCell, m(iTracer)
                end do
