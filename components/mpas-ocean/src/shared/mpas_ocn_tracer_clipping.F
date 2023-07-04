@@ -167,16 +167,18 @@ contains
             do iCell = 1, nCellsHalo(1)
                !upper(iTracer,:,iCell) = 1.000001_RKIND - tracerGroup(iTracer, :, iCell)
                !lower(iTracer,:,iCell) = -0.000001_RKIND - tracerGroup(iTracer, :, iCell)
-               upper(iTracer,:,iCell) = (1.5_RKIND - tracerGroup(iTracer, :, iCell)) &
+               upper(iTracer,:,iCell) = (1.1_RKIND - tracerGroup(iTracer, :, iCell)) &
                   * layerThickness(:,iCell) * areaCell(iCell) !1.001_RKIND
-               lower(iTracer,:,iCell) = (-0.5_RKIND - tracerGroup(iTracer, :, iCell)) &
+               lower(iTracer,:,iCell) = (-0.1_RKIND - tracerGroup(iTracer, :, iCell)) &
                   * layerThickness(:,iCell) * areaCell(iCell) !-0.001_RKIND
             end do
          end do
 
          do iCell = 1, nCellsHalo(1)
-            upper(3,:,iCell) = 1.000001_RKIND - tracerGroup(3, :, iCell)
-            lower(3,:,iCell) = 0.999999_RKIND - tracerGroup(3, :, iCell)
+            upper(3,:,iCell) = (1.01_RKIND - tracerGroup(3, :, iCell)) &
+               * layerThickness(:,iCell) * areaCell(iCell)
+            lower(3,:,iCell) = (0.99_RKIND - tracerGroup(3, :, iCell)) &
+               * layerThickness(:,iCell) * areaCell(iCell)
          end do
          
          do iTracer = 1, num_tracers
