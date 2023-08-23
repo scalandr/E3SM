@@ -138,7 +138,7 @@ contains
       !num_tracers = size(tracerGroup, dim=1)
       num_tracers = 3
       !num_tracers_eco = size(tracerGroupEcosysTracers, dim=1)
-      num_tracers_eco = 3
+      num_tracers_eco = 32
 
       allocate(q_g(num_tracers_eco))
       allocate(q_bar_star(num_tracers_eco))
@@ -150,37 +150,70 @@ contains
       allocate(v(num_tracers_eco, nVertLevels, nCellsAll))
       allocate(upper(num_tracers_eco, nVertLevels, nCellsAll))
       allocate(lower(num_tracers_eco, nVertLevels, nCellsAll))
+      allocate(neighbors(maxval(nEdgesOnCell)+2))
+      allocate(boundUpper(num_tracers_eco, nVertLevels, nCellsAll))
+      allocate(boundLower(num_tracers_eco, nVertLevels, nCellsAll))
 
       if (config_use_ecosysTracers) then
          allocate(upperEco(num_tracers_eco, nVertLevels, nCellsAll))
          allocate(lowerEco(num_tracers_eco, nVertLevels, nCellsAll))
-         allocate(boundUpper(num_tracers_eco, nVertLevels, nCellsAll))
-         allocate(boundLower(num_tracers_eco, nVertLevels, nCellsAll))
-         allocate(neighbors(maxval(nEdgesOnCell)+2))
+         !allocate(boundUpper(num_tracers_eco, nVertLevels, nCellsAll))
+         !allocate(boundLower(num_tracers_eco, nVertLevels, nCellsAll))
+         !allocate(neighbors(maxval(nEdgesOnCell)+2))
       end if
 
       !print*, 'clipping ', num_tracers, num_tracers_eco, nVertLevels, nCells
 
       if (config_use_debugTracers) then
 
-         do iTracer = 1, 2
+         !do iTracer = 1, 2
+         !   do iCell = 1, nCellsHalo(1)
+         !      !upper(iTracer,:,iCell) = 1.000001_RKIND - tracerGroup(iTracer, :, iCell)
+         !      !lower(iTracer,:,iCell) = -0.000001_RKIND - tracerGroup(iTracer, :, iCell)
+         !      upper(iTracer,:,iCell) = (1.1_RKIND - tracerGroup(iTracer, :, iCell)) &
+         !         * layerThickness(:,iCell) * areaCell(iCell) !1.001_RKIND
+         !      lower(iTracer,:,iCell) = (-0.1_RKIND - tracerGroup(iTracer, :, iCell)) &
+         !         * layerThickness(:,iCell) * areaCell(iCell) !-0.001_RKIND
+         !   end do
+         !end do
+
+         !do iCell = 1, nCellsHalo(1)
+         !   upper(3,:,iCell) = (1.01_RKIND - tracerGroup(3, :, iCell)) &
+         !      * layerThickness(:,iCell) * areaCell(iCell)
+         !   lower(3,:,iCell) = (0.99_RKIND - tracerGroup(3, :, iCell)) &
+         !      * layerThickness(:,iCell) * areaCell(iCell)
+         !end do
+
+         do iTracer = 1, 3
             do iCell = 1, nCellsHalo(1)
-               !upper(iTracer,:,iCell) = 1.000001_RKIND - tracerGroup(iTracer, :, iCell)
-               !lower(iTracer,:,iCell) = -0.000001_RKIND - tracerGroup(iTracer, :, iCell)
-               upper(iTracer,:,iCell) = (1.1_RKIND - tracerGroup(iTracer, :, iCell)) &
-                  * layerThickness(:,iCell) * areaCell(iCell) !1.001_RKIND
-               lower(iTracer,:,iCell) = (-0.1_RKIND - tracerGroup(iTracer, :, iCell)) &
-                  * layerThickness(:,iCell) * areaCell(iCell) !-0.001_RKIND
+               neighbors(:) = 0.0_RKIND
+               do k=1, maxLevelCell(iCell)
+                  do i = 1, nEdgesOnCell(iCell)
+                     cell = cellsOnCell(i,iCell)
+                     neighbors(i) = tracerGroup(iTracer, k, cell)
+                  end do
+                  if (k==1) then
+                     neighbors(nEdgesOnCell(iCell)+1) = tracerGroup(iTracer, k+1, iCell)
+                     boundUpper(iTracer,k,iCell) = maxval(neighbors(1:nEdgesOnCell(iCell)+1))
+                     boundLower(iTracer,k,iCell) = max(1e-15, minval(neighbors(1:nEdgesOnCell(iCell)+1)))
+                  elseif (k==maxLevelCell(iCell)) then
+                     neighbors(nEdgesOnCell(iCell)+1) = tracerGroup(iTracer, k-1, iCell)
+                     boundUpper(iTracer,k,iCell) = maxval(neighbors(1:nEdgesOnCell(iCell)+1))
+                     boundLower(iTracer,k,iCell) = max(1e-15, minval(neighbors(1:nEdgesOnCell(iCell)+1)))
+                  elseif (k>1 .and. k<maxLevelCell(iCell)) then
+                     neighbors(nEdgesOnCell(iCell)+1) = tracerGroup(iTracer, k-1, iCell)
+                     neighbors(nEdgesOnCell(iCell)+2) = tracerGroup(iTracer, k+1, iCell)
+                     boundUpper(iTracer,k,iCell) = maxval(neighbors(1:nEdgesOnCell(iCell)+2))
+                     boundLower(iTracer,k,iCell) = max(1e-15, minval(neighbors(1:nEdgesOnCell(iCell)+2)))
+                  end if
+               end do
+               upper(iTracer,:,iCell) = (boundUpper(iTracer,:,iCell) - tracerGroup(iTracer, :, iCell)) &
+                  * layerThickness(:,iCell) * areaCell(iCell)
+               lower(iTracer,:,iCell) = (boundLower(iTracer,:,iCell) - tracerGroup(iTracer, :, iCell)) &
+                  * layerThickness(:,iCell) * areaCell(iCell)
             end do
          end do
 
-         do iCell = 1, nCellsHalo(1)
-            upper(3,:,iCell) = (1.01_RKIND - tracerGroup(3, :, iCell)) &
-               * layerThickness(:,iCell) * areaCell(iCell)
-            lower(3,:,iCell) = (0.99_RKIND - tracerGroup(3, :, iCell)) &
-               * layerThickness(:,iCell) * areaCell(iCell)
-         end do
-         
          do iTracer = 1, num_tracers
             v(iTracer,:,:) = 0.0_RKIND
             x_bar(iTracer,:,:) = 0.0_RKIND
