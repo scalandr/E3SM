@@ -135,10 +135,11 @@ contains
 
       call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, 2)
 
-      !num_tracers = size(tracerGroup, dim=1)
-      num_tracers = 3
+      num_tracers = size(tracerGroup, dim=1)
+      !print*, 'num tracers', num_tracers
+      !num_tracers = 3
       !num_tracers_eco = size(tracerGroupEcosysTracers, dim=1)
-      num_tracers_eco = 32
+      num_tracers_eco = num_tracers
 
       allocate(q_g(num_tracers_eco))
       allocate(q_bar_star(num_tracers_eco))
@@ -184,7 +185,7 @@ contains
          !      * layerThickness(:,iCell) * areaCell(iCell)
          !end do
 
-         do iTracer = 1, 3
+         do iTracer = 1, num_tracers
             do iCell = 1, nCellsHalo(1)
                neighbors(:) = 0.0_RKIND
                do k=1, maxLevelCell(iCell)
@@ -275,8 +276,8 @@ contains
                   tracerGroup(iTracer,k,iCell) = tracerGroup(iTracer,k,iCell) + &
                   !   x_bar(iTracer,k,iCell) + m(iTracer)*v(iTracer,k,iCell)
                      (x_bar(iTracer,k,iCell) + m(iTracer)*v(iTracer,k,iCell))/(layerThickness(k,iCell) * areaCell(iCell))
-                  if (abs(tracerGroup(iTracer,k,iCell))>2.0_RKIND) print*, &
-                     tracerGroup(iTracer,k,iCell), iTracer, k, iCell, m(iTracer)
+                  !if (abs(tracerGroup(iTracer,k,iCell))>2.0_RKIND) print*, &
+                  !   tracerGroup(iTracer,k,iCell), iTracer, k, iCell, m(iTracer)
                end do
             end do
          end do

@@ -59,6 +59,9 @@
 				<var name="tracer3" array_group="debugGRP"
 			 description="tracer for debugging purposes"
 				/>
+                                <var name="tracer4" array_group="debugGRP"
+                         description="tracer for debugging purposes"
+                                />
 			</var_array>
 		</var_struct>
 	</var_struct>
@@ -75,6 +78,9 @@
 				<var name="tracer3Tend" array_group="debugGRP"
 			 description="Tendency for tracer3"
 				/>
+                                <var name="tracer4Tend" array_group="debugGRP"
+                         description="Tendency for tracer4"
+                                />
 			</var_array>
 		</var_struct>
 	</var_struct>
@@ -91,6 +97,9 @@
 				<var name="tracer3SurfaceFlux" array_group="debugTracerFluxGRP" units="m s^-1"
 			 description="Flux of tracer3 through the ocean surface. Positive into ocean."
 				/>
+                                <var name="tracer4SurfaceFlux" array_group="debugTracerFluxGRP" units="m s^-1"
+                         description="Flux of tracer4 through the ocean surface. Positive into ocean."
+                                />
 			</var_array>
 			<var_array name="debugTracersSurfaceFluxRunoff" type="real" dimensions="nCells Time" packages="debugTracersPKG">
 				<var name="tracer1SurfaceFluxRunoff" array_group="debugRunoffFluxGRP" units="m s^-1"
@@ -102,6 +111,9 @@
 				<var name="tracer3SurfaceFluxRunoff" array_group="debugRunoffFluxGRP" units="m s^-1"
 			 description="Flux of tracer3 through the ocean surface due to river runoff. Positive into ocean."
 				/>
+                                <var name="tracer4SurfaceFluxRunoff" array_group="debugRunoffFluxGRP" units="m s^-1"
+                         description="Flux of tracer4 through the ocean surface due to river runoff. Positive into ocean."
+                                />
 			</var_array>
 			<var_array name="debugTracersSurfaceFluxRemoved" type="real" dimensions="nCells Time" packages="debugTracersPKG">
 				<var name="tracer1SurfaceFluxRemoved" array_group="debugRemovedFluxGRP" units="m s^-1"
@@ -113,6 +125,9 @@
 				<var name="tracer3SurfaceFluxRemoved" array_group="debugRemovedFluxGRP" units="m s^-1"
 			 description="Flux of tracer3 that is ignored coming into the ocean. Positive into ocean."
 				/>
+                                <var name="tracer4SurfaceFluxRemoved" array_group="debugRemovedFluxGRP" units="m s^-1"
+                         description="Flux of tracer4 that is ignored coming into the ocean. Positive into ocean."
+                                />
 			</var_array>
 		</var_struct>
 		<var_struct name="tracersSurfaceRestoringFields" time_levs="1">
@@ -126,6 +141,9 @@
 				<var name="tracer3PistonVelocity" array_group="debugGRP" units="m s^-1"
 			 description="A non-negative field controlling the rate at which tracer3 is restored to tracer3SurfaceRestoringValue"
 				/>
+                                <var name="tracer4PistonVelocity" array_group="debugGRP" units="m s^-1"
+                         description="A non-negative field controlling the rate at which tracer4 is restored to tracer4SurfaceRestoringValue"
+                                />
 			</var_array>
 			<var_array name="debugTracersSurfaceRestoringValue" type="real" dimensions="nCells Time" packages="debugTracersSurfaceRestoringPKG">
 				<var name="tracer1SurfaceRestoringValue" array_group="debugGRP" units="C"
@@ -137,6 +155,9 @@
 				<var name="tracer3SurfaceRestoringValue" array_group="debugGRP" units="C"
 			 description="tracer3 is restored toward this field at a rate controlled by tracer3PistonVelocity."
 				/>
+                                <var name="tracer4SurfaceRestoringValue" array_group="debugGRP" units="C"
+                         description="tracer4 is restored toward this field at a rate controlled by tracer4PistonVelocity."
+                                />
 			</var_array>
 		</var_struct>
 		<var_struct name="tracersInteriorRestoringFields" time_levs="1">
@@ -150,6 +171,9 @@
 				<var name="tracer3InteriorRestoringRate" array_group="debugGRP" units="{s}^-1"
 				 description="A non-negative field controlling the rate at which tracer3 is restored to tracer3InteriorRestoringValue"
 				/>
+                                <var name="tracer4InteriorRestoringRate" array_group="debugGRP" units="{s}^-1"
+                                 description="A non-negative field controlling the rate at which tracer4 is restored to tracer4InteriorRestoringValue"
+                                />
 			</var_array>
 			<var_array name="debugTracersInteriorRestoringValue" type="real" dimensions="nVertLevels nCells Time" packages="debugTracersInteriorRestoringPKG">
 				<var name="tracer1InteriorRestoringValue" array_group="debugGRP" units="C"
@@ -161,6 +185,9 @@
 				<var name="tracer3InteriorRestoringValue" array_group="debugGRP" units="C"
 				 description="tracer3 is restored toward this field at a rate controlled by tracer3InteriorRestoringRate."
 				/>
+                                <var name="tracer4InteriorRestoringValue" array_group="debugGRP" units="C"
+                                 description="tracer4 is restored toward this field at a rate controlled by tracer4InteriorRestoringRate."
+                                />
 			</var_array>
 		</var_struct>
 		<var_struct name="tracersExponentialDecayFields" time_levs="1">
@@ -174,6 +201,9 @@
 				<var name="tracer3ExponentialDecayRate" array_group="debugGRP" units="s^-1"
 			 description="A non-negative field controlling the exponential decay of tracer3"
 				/>
+                                <var name="tracer4ExponentialDecayRate" array_group="debugGRP" units="s^-1"
+                         description="A non-negative field controlling the exponential decay of tracer4"
+                                />
 			</var_array>
 		</var_struct>
 		<var_struct name="tracersIdealAgeFields" time_levs="1">
@@ -187,6 +217,9 @@
 				<var name="tracer3IdealAgeMask" array_group="debugGRP"
 			 description="In top layer, tracer3 is reset to tracer3 * tracer3IdealAgeMask, valid values of tracer3IdealAgeMask or 0 and 1"
 				/>
+                                <var name="tracer4IdealAgeMask" array_group="debugGRP"
+                         description="In top layer, tracer4 is reset to tracer4 * tracer4IdealAgeMask, valid values of tracer4IdealAgeMask or 0 and 1"
+                                />
 			</var_array>
 		</var_struct>
 		<var_struct name="tracersTTDFields" time_levs="1">
@@ -200,6 +233,9 @@
 				<var name="tracer3TTDMask" array_group="debugGRP"
 			 description="In top layer, tracer3 is reset to TTDMask, valid values of tracer3TTDMask or 0 and 1"
 				/>
+                                <var name="tracer4TTDMask" array_group="debugGRP"
+                         description="In top layer, tracer4 is reset to TTDMask, valid values of tracer4TTDMask or 0 and 1"
+                                />
 			</var_array>
 		</var_struct>
 	</var_struct>

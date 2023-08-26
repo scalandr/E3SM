@@ -244,8 +244,8 @@ contains
       nCells = nCellsArray( 1 )
 
       !$omp parallel
-      !$omp do schedule(runtime) private(k, iTracer, fluxTopOfCell,
-      !fluxBottomOfCell)
+      !$omp do schedule(runtime) private(k, iTracer, fluxTopOfCell, &
+      !$omp                              fluxBottomOfCell)
       do iCell = 1, nCells
         do k = minLevelCell(iCell)+1, maxLevelCell(iCell)-1
 
